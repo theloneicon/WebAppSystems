@@ -27,15 +27,21 @@ export const api = {
   getMyRequests: async (employeeID) => {
     const response = await fetch(
       `${API_BASE}?endpoint=getMyRequests&employeeID=${encodeURIComponent(employeeID)}`,
-      { method: 'GET', mode: 'cors', redirect: 'follow' }
+      { method: 'GET', 
+        mode: 'cors', 
+        redirect: 'follow' }
     );
     return response.json();
   },
   
-  createRequest: async (employeeID, approverID, startDate, endDate, reason) => {
+  createRequest: async (employeeID, approverID, startDate, endDate, totalDays, reason) => {
     const response = await fetch(
-      `${API_BASE}?endpoint=createRequest&employeeID=${encodeURIComponent(employeeID)}&approverID=${encodeURIComponent(approverID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&reason=${encodeURIComponent(reason)}`,
-      { method: 'GET', mode: 'cors', redirect: 'follow' }
+      `${API_BASE}?endpoint=createRequest&employeeID=${encodeURIComponent(employeeID)}&approverID=${encodeURIComponent(approverID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&totalDays=${encodeURIComponent(totalDays)}&reason=${encodeURIComponent(reason)}`,
+      { 
+        method: 'GET', 
+        mode: 'cors', 
+        redirect: 'follow' 
+      }
     );
     return response.json();
   },
@@ -43,7 +49,9 @@ export const api = {
   cancelRequest: async (requestID, employeeID) => {
     const response = await fetch(
       `${API_BASE}?endpoint=cancelRequest&requestID=${encodeURIComponent(requestID)}&employeeID=${encodeURIComponent(employeeID)}`,
-      { method: 'GET', mode: 'cors', redirect: 'follow' }
+      { method: 'GET', 
+        mode: 'cors', 
+        redirect: 'follow' }
     );
     return response.json();
   }

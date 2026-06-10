@@ -37,16 +37,16 @@ function RequestCard({ request, onCancel }) {
         <div className="request-created">
           <small>Submitted: {formatDate(request.createdAt)}</small>
           {request.expiresAt && new Date(request.expiresAt) > new Date() && (
-            <small>Expires: {formatDate(request.expiresAt)}</small>
+            <small> Expires: {formatDate(request.expiresAt)}</small>
           )}
         </div>
-        {request.comments && (
+        {request.totalDays && (
           <div className="request-comments">
-            <strong>Comments:</strong> {request.comments}
+           <small> Total Day(s): {request.totalDays}</small>
           </div>
-        )}
+        )}        
       </div>
-      
+      <br></br>
       {onCancel && (
         <div className="request-actions">
           <button onClick={() => onCancel(request.id)} className="cancel-btn">

@@ -28,6 +28,7 @@ function NewRequest({ user }) {
       formData.approverID,
       formData.startDate,
       formData.endDate,
+      formData.totalDays,
       formData.reason
     );
     

@@ -5,6 +5,7 @@ import { api } from '../utils/api';
 function LeaveForm({ user, onSubmit }) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [totalDays, setTotalDays] = useState('');
   const [reason, setReason] = useState('');
   const [approverID, setApproverID] = useState('');
   const [approvers, setApprovers] = useState([]);
@@ -31,6 +32,7 @@ function LeaveForm({ user, onSubmit }) {
       approverID,
       startDate,
       endDate,
+      totalDays,
       reason
     });
   };
@@ -70,6 +72,17 @@ function LeaveForm({ user, onSubmit }) {
           onChange={(e) => setEndDate(e.target.value)}
           required
           min={startDate || new Date().toISOString().split('T')[0]}
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Total Day(s) *</label>
+        <input
+          type="Text"
+          value={totalDays}
+          onChange={(e) => setTotalDays(e.target.value)}
+          placeholder="Enter Total Days"
+          required          
         />
       </div>
 
