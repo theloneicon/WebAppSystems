@@ -357,4 +357,51 @@ button:disabled {
   .main-content {
     padding: 1rem;
   }
+
+
+  /* Approver Badge */
+.approver-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* Approver Dashboard Styles */
+.approver-dashboard h1 {
+  margin-bottom: 0.5rem;
+}
+
+.approve-btn {
+  background-color: #22c55e;
+}
+
+.approve-btn:hover:not(:disabled) {
+  background-color: #16a34a;
+}
+
+.reject-btn {
+  background-color: #ef4444;
+}
+
+.reject-btn:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.request-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 }

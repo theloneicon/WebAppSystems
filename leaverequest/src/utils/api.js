@@ -54,5 +54,27 @@ export const api = {
         redirect: 'follow' }
     );
     return response.json();
-  }
+  },
+
+  getPendingApprovals: async (approverID, accessLevel) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=getPendingApprovals&approverID=${encodeURIComponent(approverID)}&accessLevel=${encodeURIComponent(accessLevel)}`
+  );
+  return response.json();
+  },
+
+  approveRequest: async (requestID, approverID, comments) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=approveRequest&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+  );
+  return response.json();
+  },
+
+  rejectRequest: async (requestID, approverID, comments) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=rejectRequest&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+  );
+  return response.json();
+  }  
 };
+

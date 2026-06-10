@@ -5,6 +5,7 @@ import Dashboard from '../pages/Dashboard';
 import MyRequests from '../pages/MyRequests';
 import NewRequest from '../pages/NewRequest';
 import Profile from '../pages/Profile';
+import ApproverDashboard from '../pages/ApproverDashboard';  // NEW
 
 function UserMain({ user, onLogout }) {
   return (
@@ -18,6 +19,7 @@ function UserMain({ user, onLogout }) {
             <Route path="/my-requests" element={<MyRequests user={user} />} />
             <Route path="/new-request" element={<NewRequest user={user} />} />
             <Route path="/profile" element={<Profile user={user} />} />
+            <Route path="/approvals" element={<ApproverDashboard user={user} />} />  {/* NEW */}
           </Routes>
         </main>
       </div>
