@@ -35,14 +35,14 @@ function Profile({ user }) {
           </div>
           <div className="detail-row">
             <label>Regular Approvers:</label>
-            <span>{user.aprvRegAprv}</span>
+            <span>{user.aprvRegAprv} |</span>  
           </div>
           <div className="detail-row">
             <label>Access Level:</label>
             <span>
-              {user.accessLevel === 0 && '👤 Normal User'}
-              {user.accessLevel === 1 && '👑 Admin'}
-              {user.accessLevel === 2 && '⭐ Superuser'}
+              {user.aprvLevel === 0 && '👤 Normal User'}
+              {user.aprvLevel === 1 && '👑 Admin'}
+              {user.aprvLevel === 2 && '⭐ Superuser'}
             </span>
           </div>
         </div>
