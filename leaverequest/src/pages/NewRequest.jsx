@@ -29,7 +29,8 @@ function NewRequest({ user }) {
       formData.startDate,
       formData.endDate,
       formData.totalDays,
-      formData.reason
+      formData.reason,
+      formData.leaveType
     );
     
     if (result.success) {

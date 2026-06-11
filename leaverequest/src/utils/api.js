@@ -34,9 +34,9 @@ export const api = {
     return response.json();
   },
   
-  createRequest: async (employeeID, approverID, startDate, endDate, totalDays, reason) => {
+  createRequest: async (employeeID, approverID, startDate, endDate, totalDays, reason , leaveType) => {
     const response = await fetch(
-      `${API_BASE}?endpoint=createRequest&employeeID=${encodeURIComponent(employeeID)}&approverID=${encodeURIComponent(approverID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&totalDays=${encodeURIComponent(totalDays)}&reason=${encodeURIComponent(reason)}`,
+      `${API_BASE}?endpoint=createRequest&employeeID=${encodeURIComponent(employeeID)}&approverID=${encodeURIComponent(approverID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&totalDays=${encodeURIComponent(totalDays)}&reason=${encodeURIComponent(reason)}&leaveType=${encodeURIComponent(leaveType)}`,
       { 
         method: 'GET', 
         mode: 'cors', 

@@ -1,12 +1,14 @@
 // src/components/LeaveForm.jsx
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
+import { leaveTypes } from '../utils/vars';
 
 function LeaveForm({ user, onSubmit }) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [totalDays, setTotalDays] = useState('');
   const [reason, setReason] = useState('');
+  const [leaveType, setLeaveType] = useState('');
   const [approverID, setApproverID] = useState('');
   const [approvers, setApprovers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +35,7 @@ function LeaveForm({ user, onSubmit }) {
       startDate,
       endDate,
       totalDays,
+      leaveType,
       reason
     });
   };
@@ -78,12 +81,28 @@ function LeaveForm({ user, onSubmit }) {
       <div className="form-group">
         <label>Total Day(s) *</label>
         <input
-          type="Text"
+          type="Select"
           value={totalDays}
           onChange={(e) => setTotalDays(e.target.value)}
-          placeholder="Enter Total Days"
+          placeholder="enter total days"
           required          
         />
+      </div>
+
+      <div className="form-group">
+        <label>Leave Type *</label>
+        <select 
+          required 
+          value={leaveType}
+          onChange={(e) => setLeaveType(e.target.value)}
+        >
+          <option disabled value="">select </option>
+          {leaveTypes.map((leave) => (
+            <option key={leave.id} value={leave.value}>
+              {leave.value}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="form-group">

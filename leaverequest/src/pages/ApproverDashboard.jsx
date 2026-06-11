@@ -85,6 +85,9 @@ function ApproverDashboard({ user }) {
                   <strong>Department:</strong> {request.deptName}
                 </div>
                 <div className="request-reason">
+                  <strong>Leave Type:</strong> {request.leaveType}
+                </div>                
+                <div className="request-reason">
                   <strong>Reason:</strong> {request.reason}
                 </div>
                 <div className="request-created">
