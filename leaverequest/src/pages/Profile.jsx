@@ -1,5 +1,41 @@
 // src/pages/Profile.jsx
+import { useState, useEffect } from 'react';
+import { api } from '../utils/api';
+
 function Profile({ user }) {
+  const [approverNames, setApproverNames] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchApproverNames();
+  }, [user.aprvRegAprv, user.deptID, user.aprvLevel]);
+
+  const fetchApproverNames = async () => {
+    if (!user.aprvRegAprv) {
+      setApproverNames('No approvers configured');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const result = await api.getApprovers(user.aprvLevel, user.deptID, user.aprvRegAprv);
+      
+      if (result.success && result.approvers.length > 0) {
+        // Extract names from approvers array
+        const names = result.approvers.map(approver => approver.name).join('; ');
+        setApproverNames(names);
+      } else {
+        // Fallback to showing the raw levels if no approvers found
+        setApproverNames(`${user.aprvRegAprv} (No matching users found)`);
+      }
+    } catch (error) {
+      console.error('Error fetching approvers:', error);
+      setApproverNames(user.aprvRegAprv || 'Error loading approvers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="profile">
       <h1>My Profile</h1>
@@ -35,7 +71,15 @@ function Profile({ user }) {
           </div>
           <div className="detail-row">
             <label>Regular Approvers:</label>
-            <span>{user.aprvRegAprv} |</span>  
+            <span>
+              {loading ? (
+                'Loading...'
+              ) : (
+                <>
+                  {user.aprvRegAprv} → {approverNames}
+                </>
+              )}
+            </span>
           </div>
           <div className="detail-row">
             <label>Access Level:</label>
@@ -43,6 +87,12 @@ function Profile({ user }) {
               {user.aprvLevel === 0 && '👤 Normal User'}
               {user.aprvLevel === 1 && '👑 Admin'}
               {user.aprvLevel === 2 && '⭐ Superuser'}
+            </span>
+          </div>
+          <div className="detail-row">
+            <label>Status:</label>
+            <span className={user.status === 'ACTIVE' ? 'status-active' : 'status-inactive'}>
+              {user.status}
             </span>
           </div>
         </div>
