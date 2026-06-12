@@ -40,6 +40,7 @@ function LeaveForm({ user, onSubmit }) {
     });
   };
 
+
   if (loading) return <div>Loading approvers...</div>;
 
   return (

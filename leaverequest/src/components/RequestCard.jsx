@@ -26,7 +26,7 @@ function RequestCard({ request, onCancel }) {
       <div className="request-body">
         <div className="request-dates">
           <span>📅 {formatDate(request.startDate)} → {formatDate(request.endDate)}</span>
-          <span>{Math.ceil((new Date(request.endDate) - new Date(request.startDate)) / (1000 * 60 * 60 * 24))} days</span>
+          <span>{Math.ceil((new Date(request.endDate) - new Date(request.startDate)) / (1000 * 60 * 60 * 24)) + 1} days</span>
         </div>
         <div className="request-leavetype">
           <strong>Leave Type:</strong> {request.leaveType}

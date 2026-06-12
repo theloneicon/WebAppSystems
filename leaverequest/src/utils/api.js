@@ -1,6 +1,12 @@
 // src/utils/api.js
 const API_BASE = 'https://script.google.com/macros/s/AKfycbxAqsJtI4NzTgCdDpneqYZLgh0xAhVM-zMTyNkqLVGOUy7g5NgdT9qYUAySXTrrg56gEA/exec';
 
+  // Helper function to format date as YYYY-MM-DD
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];  // "2026-06-10"
+  };
+
 export const api = {
   login: async (employeeID, password) => {
     const response = await fetch(
@@ -33,10 +39,15 @@ export const api = {
     );
     return response.json();
   },
-  
+
+   
   createRequest: async (employeeID, approverID, startDate, endDate, totalDays, reason , leaveType) => {
+  // Format dates before sending
+  const formattedStartDate = formatDate(startDate);
+  const formattedEndDate = formatDate(endDate);
+
     const response = await fetch(
-      `${API_BASE}?endpoint=createRequest&employeeID=${encodeURIComponent(employeeID)}&approverID=${encodeURIComponent(approverID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&totalDays=${encodeURIComponent(totalDays)}&reason=${encodeURIComponent(reason)}&leaveType=${encodeURIComponent(leaveType)}`,
+      `${API_BASE}?endpoint=createRequest&employeeID=${encodeURIComponent(employeeID)}&approverID=${encodeURIComponent(approverID)}&startDate=${encodeURIComponent(formattedStartDate)}&endDate=${encodeURIComponent(formattedEndDate)}&totalDays=${encodeURIComponent(totalDays)}&reason=${encodeURIComponent(reason)}&leaveType=${encodeURIComponent(leaveType)}`,
       { 
         method: 'GET', 
         mode: 'cors', 

@@ -2,6 +2,13 @@
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString();
+};
+
 function ApproverDashboard({ user }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +82,7 @@ function ApproverDashboard({ user }) {
               
               <div className="request-body">
                 <div className="request-dates">
-                  <span>📅 {request.startDate} → {request.endDate}</span>
+                  <span>📅 {formatDate(request.startDate)} → {formatDate(request.endDate)}</span>
                   <span>{request.totalDays} days</span>
                 </div>
                 <div className="request-reason">
