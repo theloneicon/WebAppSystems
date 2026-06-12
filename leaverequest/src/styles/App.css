@@ -145,6 +145,28 @@ button:disabled {
   background-color: #dc2626;
 }
 
+/* Approver Badge */
+.approver-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* Admin Badge */
+.admin-badge {
+  background: #ef4444;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
 /* Main Content */
 .main-content {
   padding: 2rem;
@@ -233,6 +255,30 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   color: #475569;
+}
+
+.request-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.approve-btn {
+  background-color: #22c55e;
+}
+
+.approve-btn:hover:not(:disabled) {
+  background-color: #16a34a;
+}
+
+.reject-btn {
+  background-color: #ef4444;
+}
+
+.reject-btn:hover:not(:disabled) {
+  background-color: #dc2626;
 }
 
 /* Alerts */
@@ -338,7 +384,231 @@ button:disabled {
   color: #6b7280;
 }
 
-/* Responsive */
+/* Notification Banner */
+.notification-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.notification-icon {
+  font-size: 2.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-content h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.notification-stats {
+  display: flex;
+  gap: 2rem;
+}
+
+.notification-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.notification-stat .stat-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.notification-stat .stat-label {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.notification-stat.pending .stat-number {
+  color: #fbbf24;
+}
+
+.notification-stat.approved .stat-number {
+  color: #4ade80;
+}
+
+/* Admin Dashboard Styles */
+.admin-dashboard {
+  padding: 1rem;
+}
+
+/* Filter Tabs */
+.filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.filter-btn, .filter-active {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.filter-btn:hover {
+  background: #e5e7eb;
+}
+
+.filter-active {
+  background: #667eea;
+  color: white;
+  border: none;
+}
+
+/* Table Styles */
+.table-container {
+  overflow-x: auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.admin-table th {
+  text-align: left;
+  padding: 1rem;
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-table th:hover {
+  background: #f3f4f6;
+}
+
+.admin-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  color: #4b5563;
+}
+
+.admin-table tr:hover {
+  background: #f1f5f9;
+}
+
+.request-id-cell {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.days-cell {
+  font-weight: 600;
+  text-align: center;
+}
+
+.empty-table {
+  text-align: center;
+  padding: 3rem;
+  color: #9ca3af;
+}
+
+/* Table Status Badges */
+.status-badge-table {
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.status-badge-table.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge-table.status-approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge-table.status-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge-table.status-canceled {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.status-badge-table.status-recalled {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Summary Cards */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.summary-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.summary-card h3 {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.summary-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.summary-card.pending .summary-number { color: #eab308; }
+.summary-card.approved .summary-number { color: #22c55e; }
+.summary-card.rejected .summary-number { color: #ef4444; }
+
+/* Responsive Media Queries */
 @media (max-width: 768px) {
   .navbar {
     flex-direction: column;
@@ -357,51 +627,26 @@ button:disabled {
   .main-content {
     padding: 1rem;
   }
-
-
-  /* Approver Badge */
-.approver-badge {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  margin-left: 8px;
-}
-
-/* Approver Dashboard Styles */
-.approver-dashboard h1 {
-  margin-bottom: 0.5rem;
-}
-
-.approve-btn {
-  background-color: #22c55e;
-}
-
-.approve-btn:hover:not(:disabled) {
-  background-color: #16a34a;
-}
-
-.reject-btn {
-  background-color: #ef4444;
-}
-
-.reject-btn:hover:not(:disabled) {
-  background-color: #dc2626;
-}
-
-.request-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
+  
+  .detail-row {
+    flex-direction: column;
+  }
+  
+  .detail-row label {
+    width: 100%;
+    margin-bottom: 0.25rem;
+  }
+  
+  .notification-banner {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .notification-stats {
+    justify-content: center;
+  }
+  
+  .filter-tabs {
+    justify-content: center;
+  }
 }

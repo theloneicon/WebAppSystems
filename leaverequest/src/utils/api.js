@@ -86,6 +86,23 @@ export const api = {
     `${API_BASE}?endpoint=rejectRequest&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
   );
   return response.json();
-  }  
+  },  
+
+  // Get today's stats for admin dashboard
+  getTodaysStats: async () => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=getTodaysStats`
+    );
+    return response.json();
+  },
+
+  // Get all requests (Admin only)
+  getAllRequests: async () => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=getAllRequests`
+    );
+    return response.json();
+  },
+
 };
 
