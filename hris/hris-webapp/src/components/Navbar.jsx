@@ -10,17 +10,34 @@ function Navbar({ user, onLogout }) {
   const [todayStatus, setTodayStatus] = useState(null);
   const [clocking, setClocking] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [pendingClockOut, setPendingClockOut] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       checkTodayStatus();
+      // Check localStorage for pending clock-out
+      const stored = localStorage.getItem(`pendingClockOut_${user.id}`);
+      console.log('Stored pendingClockOut:', stored);
+      setPendingClockOut(stored === 'true');
     }
   }, [user?.id]);
 
   const checkTodayStatus = async () => {
     const result = await api.getTodayAttendance(user.id);
+    console.log('Today attendance result:', result);
     if (result.success) {
       setTodayStatus(result);
+      
+      // If user is clocked in but not clocked out, ensure flag is set
+      if (result.clockedIn && !result.clockedOut) {
+        console.log('User is clocked in but not out, setting flag');
+        localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
+        setPendingClockOut(true);
+      } else if (result.clockedOut) {
+        console.log('User is clocked out, clearing flag');
+        localStorage.removeItem(`pendingClockOut_${user.id}`);
+        setPendingClockOut(false);
+      }
     }
   };
 
@@ -33,8 +50,15 @@ function Navbar({ user, onLogout }) {
       '',
       user.regHoursFr || '8:00 AM'
     );
+    console.log('Clock in result:', result);
+    console.log('User object:', user);
+    console.log('Sched Arrangement:', user.schedArrangement);
+
     if (result.success) {
       alert('✅ Clocked In successfully!');
+      // Store in localStorage that clock-out is pending
+      localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
+      setPendingClockOut(true);
       await checkTodayStatus();
     } else {
       alert('❌ Error: ' + result.error);
@@ -43,6 +67,11 @@ function Navbar({ user, onLogout }) {
   };
 
   const handleClockOut = async () => {
+    if (!pendingClockOut) {
+      alert('⏰ Please log out and log back in to clock out.');
+      return;
+    }
+    
     setClocking(true);
     const result = await api.clockOut(
       user.id,
@@ -51,8 +80,12 @@ function Navbar({ user, onLogout }) {
       '',
       user.regHoursTo || '5:00 PM'
     );
+    console.log('Clock out result:', result);
     if (result.success) {
       alert('✅ Clocked Out successfully!');
+      // Clear the pending flag
+      localStorage.removeItem(`pendingClockOut_${user.id}`);
+      setPendingClockOut(false);
       await checkTodayStatus();
     } else {
       alert('❌ Error: ' + result.error);
@@ -79,6 +112,32 @@ function Navbar({ user, onLogout }) {
   const handleMouseLeave = () => {
     setOpenDropdown(null);
   };
+
+  // Add this helper function at the top of Navbar.jsx
+  const formatTimeDisplay = (timeString) => {
+    if (!timeString) return '';
+    // If it's already in HH:MM AM/PM format
+    if (timeString.match(/(\d+):(\d+)\s*(AM|PM)/i)) {
+      return timeString;
+    }
+    // If it's an ISO string, extract and format time
+    try {
+      const date = new Date(timeString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return timeString;
+    }
+  };
+
+
+  // Clock-out is enabled if:
+  // 1. User has clocked in today (from server)
+  // 2. User has NOT clocked out today (from server)
+  // 3. There's a pending flag in localStorage
+  const shouldShowClockOut = todayStatus?.clockedIn && !todayStatus?.clockedOut;
+  const isClockOutEnabled = shouldShowClockOut && pendingClockOut;
+
+  console.log('Render state:', { shouldShowClockOut, pendingClockOut, isClockOutEnabled });
 
   return (
     <nav className="navbar">
@@ -112,18 +171,19 @@ function Navbar({ user, onLogout }) {
           </button>
         ) : !todayStatus?.clockedOut ? (
           <div className="clock-status clocked-in">
-            ✅ Clocked in at {todayStatus.clockInTime}
+            ✅ Clocked in at {formatTimeDisplay(todayStatus.clockInTime)}
             <button 
               onClick={handleClockOut} 
-              disabled={clocking}
-              className="clock-nav-btn clock-out"
+              disabled={clocking || !isClockOutEnabled}
+              className={`clock-nav-btn clock-out ${!isClockOutEnabled ? 'disabled' : ''}`}
+              title={!isClockOutEnabled ? 'Please log out and log back in to clock out' : ''}
             >
-              🏁 CLOCK OUT
+              🏁 CLOCK OUT {!isClockOutEnabled && '(Re-login required)'}
             </button>
           </div>
         ) : (
           <div className="clock-status completed">
-            ✅ Completed: {todayStatus.clockInTime} - {todayStatus.clockOutTime}
+            ✅ Completed: {formatTimeDisplay(todayStatus.clockInTime)} - {formatTimeDisplay(todayStatus.clockOutTime)}
           </div>
         )}
       </div>
@@ -131,35 +191,38 @@ function Navbar({ user, onLogout }) {
       {/* Navigation Menu with Dropdowns */}
       <div className="nav-links">
         {/* Dashboard Dropdown */}
-        <div 
-          className="dropdown"
-          onMouseEnter={() => handleMouseEnter('dashboard')}
-          onMouseLeave={handleMouseLeave}
-        >
-          <button className="dropdown-btn">
-            <span className="nav-icon">📊</span> Dashboard <span className="dropdown-arrow">▼</span>
-          </button>
-          {openDropdown === 'dashboard' && (
-            <div className="dropdown-content">
-              <Link to="/dashboard" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">📊</span> My Leaves Status
-              </Link>
-              {isAdmin && (
-                <>
-                  <Link to="/attendance" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">📊</span> Attendance
-                  </Link>
-                  <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">🔧</span> HR Acknowledgement
-                  </Link>
-                  <Link to="/admin" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">📋</span> All Leaves Status
-                  </Link>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+      <div 
+        className="dropdown"
+        onMouseEnter={() => handleMouseEnter('dashboard')}
+        onMouseLeave={handleMouseLeave}
+      >
+        <button className="dropdown-btn">
+          <span className="nav-icon">📊</span> Dashboard <span className="dropdown-arrow">▼</span>
+        </button>
+        {openDropdown === 'dashboard' && (
+          <div className="dropdown-content">
+            <Link to="/dashboard" onClick={() => setOpenDropdown(null)}>
+              <span className="nav-icon">📊</span> My Leaves Status
+            </Link>
+            <Link to="/my-attendance" onClick={() => setOpenDropdown(null)}>
+              <span className="nav-icon">📅</span> My Attendance
+            </Link>
+            {isAdmin && (
+              <>
+                <Link to="/attendance" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📊</span> Attendance
+                </Link>
+                <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">🔧</span> HR Acknowledgement
+                </Link>
+                <Link to="/admin" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📋</span> All Leaves Status
+                </Link>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
         {/* Leaves Dropdown */}
         <div 

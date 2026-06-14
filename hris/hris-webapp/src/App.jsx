@@ -19,10 +19,12 @@ function App() {
     setUser(employeeData);  // This triggers re-render to show UserMain
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('userSession');
-    setUser(null);
-  };
+ const handleLogout = () => {
+  // Don't clear the pending flag here - we want it to persist for re-login
+  // localStorage.removeItem(`pendingClockOut_${user?.id}`); // ← DON'T do this
+  localStorage.removeItem('userSession');
+  setUser(null);
+};
 
   // If no user logged in, show Login page
   if (!user) {

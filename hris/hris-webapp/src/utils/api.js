@@ -155,6 +155,8 @@ login: async (employeeID, password) => {
     const device = getDeviceInfo();
     const ipAddress = await getIPAddress();
     
+    console.log('Clock In params:', { employeeID, employeeName, schedArrangement, logDate, logTime });
+    
     const response = await fetch(
       `${API_BASE}?endpoint=clockIn&employeeID=${encodeURIComponent(employeeID)}&employeeName=${encodeURIComponent(employeeName)}&schedArrangement=${encodeURIComponent(schedArrangement)}&logDate=${encodeURIComponent(logDate)}&logTime=${encodeURIComponent(logTime)}&locationGPS=${encodeURIComponent(locationGPS)}&device=${encodeURIComponent(device)}&ipAddress=${encodeURIComponent(ipAddress)}&scheduleStart=${encodeURIComponent(scheduleStart)}`,
       { method: 'GET', mode: 'cors', redirect: 'follow' }
@@ -237,6 +239,21 @@ login: async (employeeID, password) => {
   rejectRegularization: async (requestID, approverID, comments) => {
     const response = await fetch(
       `${API_BASE}?endpoint=rejectRegularization&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+    );
+    return response.json();
+  },
+    // Get last clock-in time for today
+    getLastClockInTime: async (employeeID) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=getLastClockInTime&employeeID=${encodeURIComponent(employeeID)}`
+    );
+    return response.json();
+  },
+
+   // Get my attendance records
+  getMyAttendance: async (employeeID, month, year) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=getMyAttendance&employeeID=${encodeURIComponent(employeeID)}&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`
     );
     return response.json();
   }

@@ -17,8 +17,8 @@ function RequestCard({ request, onCancel }) {
 
   const formatCredit = (credit, leaveRenderType) => {
     if (leaveRenderType === 'FULL') return 'Full Day (1.0 day)';
-    if (leaveRenderType === '1ST_HALF') return '1st Half - AM (0.5 day)';
-    if (leaveRenderType === '2ND_HALF') return '2nd Half - PM (0.5 day)';
+    if (leaveRenderType === '1ST_HALF') return '1st Half (0.5 day)';
+    if (leaveRenderType === '2ND_HALF') return '2nd Half (0.5 day)';
     return `${credit || 0} day(s)`;
   };
 

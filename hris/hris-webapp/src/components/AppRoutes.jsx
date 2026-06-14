@@ -9,12 +9,14 @@ import AdminDashboard from '../pages/AdminDashboard';
 import AttendanceDashboard from '../pages/AttendanceDashboard';
 import HRDashboard from '../pages/HRDashboard';
 import RegularizationRequest from '../pages/RegularizationRequest';
+import MyAttendance from '../pages/MyAttendance';
 
 function AppRoutes({ user }) {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/dashboard" />} />
       <Route path="/dashboard" element={<Dashboard user={user} />} />
+      <Route path="/my-attendance" element={<MyAttendance user={user} />} />
       <Route path="/my-requests" element={<MyRequests user={user} />} />
       <Route path="/new-request" element={<NewRequest user={user} />} />
       <Route path="/regularization" element={<RegularizationRequest user={user} />} />
