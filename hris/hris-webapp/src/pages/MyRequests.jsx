@@ -32,17 +32,21 @@ function MyRequests({ user }) {
     }
   };
 
-  // Format credit display
-  const formatCredit = (credit) => {
-    if (credit === 1) return 'Full Day';
-    if (credit === 0.5) return 'Half Day';
-    return `${credit} day(s)`;
+  // Get display status for filtering
+  const getDisplayStatus = (request) => {
+    if (request.hrStatus === 'APPROVED') return 'APPROVED';
+    if (request.hrStatus === 'REJECTED') return 'REJECTED';
+    return request.regularStatus || 'PENDING';
   };
 
   const filteredRequests = requests.filter(req => {
     if (filter === 'ALL') return true;
-    return req.status === filter;
+    return getDisplayStatus(req) === filter;
   });
+
+  const getCount = (status) => {
+    return requests.filter(req => getDisplayStatus(req) === status).length;
+  };
 
   if (loading) return <div className="loading">Loading...</div>;
 
@@ -54,17 +58,23 @@ function MyRequests({ user }) {
         <button onClick={() => setFilter('ALL')} className={filter === 'ALL' ? 'active' : ''}>
           All ({requests.length})
         </button>
-        <button onClick={() => setFilter('PENDING')} className={filter === 'PENDING' ? 'active' : ''}>
-          Pending ({requests.filter(r => r.status === 'PENDING').length})
-        </button>
         <button onClick={() => setFilter('APPROVED')} className={filter === 'APPROVED' ? 'active' : ''}>
-          Approved ({requests.filter(r => r.status === 'APPROVED').length})
+          Approved ({getCount('APPROVED')})
         </button>
-        <button onClick={() => setFilter('REJECTED')} className={filter === 'REJECTED' ? 'active' : ''}>
-          Rejected ({requests.filter(r => r.status === 'REJECTED').length})
+        <button onClick={() => setFilter('NOTED')} className={filter === 'NOTED' ? 'active' : ''}>
+          Noted ({getCount('NOTED')})
         </button>
-        <button onClick={() => setFilter('CANCELED')} className={filter === 'CANCELED' ? 'active' : ''}>
-          Canceled ({requests.filter(r => r.status === 'CANCELED').length})
+        <button onClick={() => setFilter('PENDING')} className={filter === 'PENDING' ? 'active' : ''}>
+          Pending ({getCount('PENDING')})
+        </button>
+        <button onClick={() => setFilter('REJECT')} className={filter === 'REJECT' ? 'active' : ''}>
+          Rejected ({getCount('REJECT')})
+        </button>
+        <button onClick={() => setFilter('CANCEL')} className={filter === 'CANCEL' ? 'active' : ''}>
+          Canceled ({getCount('CANCEL')})
+        </button>
+        <button onClick={() => setFilter('RECALL')} className={filter === 'RECALL' ? 'active' : ''}>
+          Recalled ({getCount('RECALL')})
         </button>
       </div>
 
@@ -77,15 +87,8 @@ function MyRequests({ user }) {
           {filteredRequests.map(request => (
             <RequestCard
               key={request.id}
-              request={{
-                ...request,
-                // Map fields for RequestCard compatibility
-                leaveRenderType: request.leaveRenderType,
-                credit: request.credit,
-                date: request.date,
-                leaveType: request.leaveType
-              }}
-              onCancel={request.status === 'PENDING' ? handleCancel : null}
+              request={request}
+              onCancel={request.regularStatus === 'PENDING' ? handleCancel : null}
             />
           ))}
         </div>

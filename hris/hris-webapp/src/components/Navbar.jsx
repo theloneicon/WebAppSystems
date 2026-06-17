@@ -5,8 +5,15 @@ import { api } from '../utils/api';
 
 function Navbar({ user, onLogout }) {
   const location = useLocation();
-  const isApprover = user?.aprvLevel > 0;
+  
+  // Role-based access control - USING ROLE_CATEG
   const isAdmin = user?.accessLevel === 1;
+  const isRegularApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08';
+  const isFinalApprover = user?.roleCateg === 'Approver08';
+  
+  // Check if user is allowed to file Regularization (Official Business)
+  const canRegularize = user?.allowedRegzn === 1;
+  
   const [todayStatus, setTodayStatus] = useState(null);
   const [clocking, setClocking] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -15,7 +22,6 @@ function Navbar({ user, onLogout }) {
   useEffect(() => {
     if (user?.id) {
       checkTodayStatus();
-      // Check localStorage for pending clock-out
       const stored = localStorage.getItem(`pendingClockOut_${user.id}`);
       console.log('Stored pendingClockOut:', stored);
       setPendingClockOut(stored === 'true');
@@ -28,7 +34,6 @@ function Navbar({ user, onLogout }) {
     if (result.success) {
       setTodayStatus(result);
       
-      // If user is clocked in but not clocked out, ensure flag is set
       if (result.clockedIn && !result.clockedOut) {
         console.log('User is clocked in but not out, setting flag');
         localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
@@ -56,7 +61,6 @@ function Navbar({ user, onLogout }) {
 
     if (result.success) {
       alert('✅ Clocked In successfully!');
-      // Store in localStorage that clock-out is pending
       localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
       setPendingClockOut(true);
       await checkTodayStatus();
@@ -83,7 +87,6 @@ function Navbar({ user, onLogout }) {
     console.log('Clock out result:', result);
     if (result.success) {
       alert('✅ Clocked Out successfully!');
-      // Clear the pending flag
       localStorage.removeItem(`pendingClockOut_${user.id}`);
       setPendingClockOut(false);
       await checkTodayStatus();
@@ -95,13 +98,14 @@ function Navbar({ user, onLogout }) {
 
   const getRoleIcon = () => {
     if (user?.accessLevel === 1) return '🔧';
-    if (user?.aprvLevel > 0) return '👑';
+    if (isRegularApprover || isFinalApprover) return '👑';
     return '👤';
   };
 
   const getRoleName = () => {
     if (user?.accessLevel === 1) return 'Admin';
-    if (user?.aprvLevel > 0) return 'Approver';
+    if (isFinalApprover) return 'Final Approver';
+    if (isRegularApprover) return 'Approver';
     return 'User';
   };
 
@@ -113,14 +117,11 @@ function Navbar({ user, onLogout }) {
     setOpenDropdown(null);
   };
 
-  // Add this helper function at the top of Navbar.jsx
   const formatTimeDisplay = (timeString) => {
     if (!timeString) return '';
-    // If it's already in HH:MM AM/PM format
     if (timeString.match(/(\d+):(\d+)\s*(AM|PM)/i)) {
       return timeString;
     }
-    // If it's an ISO string, extract and format time
     try {
       const date = new Date(timeString);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -129,11 +130,6 @@ function Navbar({ user, onLogout }) {
     }
   };
 
-
-  // Clock-out is enabled if:
-  // 1. User has clocked in today (from server)
-  // 2. User has NOT clocked out today (from server)
-  // 3. There's a pending flag in localStorage
   const shouldShowClockOut = todayStatus?.clockedIn && !todayStatus?.clockedOut;
   const isClockOutEnabled = shouldShowClockOut && pendingClockOut;
 
@@ -191,38 +187,38 @@ function Navbar({ user, onLogout }) {
       {/* Navigation Menu with Dropdowns */}
       <div className="nav-links">
         {/* Dashboard Dropdown */}
-      <div 
-        className="dropdown"
-        onMouseEnter={() => handleMouseEnter('dashboard')}
-        onMouseLeave={handleMouseLeave}
-      >
-        <button className="dropdown-btn">
-          <span className="nav-icon">📊</span> Dashboard <span className="dropdown-arrow">▼</span>
-        </button>
-        {openDropdown === 'dashboard' && (
-          <div className="dropdown-content">
-            <Link to="/dashboard" onClick={() => setOpenDropdown(null)}>
-              <span className="nav-icon">📊</span> My Leaves Status
-            </Link>
-            <Link to="/my-attendance" onClick={() => setOpenDropdown(null)}>
-              <span className="nav-icon">📅</span> My Attendance
-            </Link>
-            {isAdmin && (
-              <>
-                <Link to="/attendance" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">📊</span> Attendance
-                </Link>
-                <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">🔧</span> HR Acknowledgement
-                </Link>
-                <Link to="/admin" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">📋</span> All Leaves Status
-                </Link>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+        <div 
+          className="dropdown"
+          onMouseEnter={() => handleMouseEnter('dashboard')}
+          onMouseLeave={handleMouseLeave}
+        >
+          <button className="dropdown-btn">
+            <span className="nav-icon">📊</span> Dashboard <span className="dropdown-arrow">▼</span>
+          </button>
+          {openDropdown === 'dashboard' && (
+            <div className="dropdown-content">
+              <Link to="/dashboard" onClick={() => setOpenDropdown(null)}>
+                <span className="nav-icon">📊</span> My Leaves Status
+              </Link>
+              <Link to="/my-attendance" onClick={() => setOpenDropdown(null)}>
+                <span className="nav-icon">📅</span> My Attendance
+              </Link>
+              {isAdmin && (
+                <>
+                  <Link to="/attendance" onClick={() => setOpenDropdown(null)}>
+                    <span className="nav-icon">📊</span> Attendance
+                  </Link>
+                  <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
+                    <span className="nav-icon">🔧</span> HR Acknowledgement
+                  </Link>
+                  <Link to="/admin" onClick={() => setOpenDropdown(null)}>
+                    <span className="nav-icon">📋</span> All Leaves Status
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Leaves Dropdown */}
         <div 
@@ -241,14 +237,18 @@ function Navbar({ user, onLogout }) {
               <Link to="/new-request" onClick={() => setOpenDropdown(null)}>
                 <span className="nav-icon">✨</span> New Leaves
               </Link>
-              {isApprover && (
+              {/* Regular Approver Link - using Role_Categ */}
+              {isRegularApprover && (
                 <Link to="/approvals" onClick={() => setOpenDropdown(null)}>
                   <span className="nav-icon">✅</span> Leave Approvals
                 </Link>
               )}
-              <Link to="/regularization" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">🔄</span> Regularization
-              </Link>
+              {/* Regularization Link - ONLY if Allowed_Regzn = 1 */}
+              {canRegularize && (
+                <Link to="/regularization" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">🔄</span> Regularization
+                </Link>
+              )}
             </div>
           )}
         </div>
@@ -257,6 +257,13 @@ function Navbar({ user, onLogout }) {
         <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
           <span className="nav-icon">👤</span> Profile
         </Link>
+        
+        {/* Final Approver Link - using Role_Categ */}
+        {isFinalApprover && (
+          <Link to="/final-approvals" className={location.pathname === '/final-approvals' ? 'active' : ''}>
+            🏆 Final Approvals
+          </Link>
+        )}
       </div>
     </nav>
   );

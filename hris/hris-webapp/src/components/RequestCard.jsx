@@ -3,9 +3,13 @@ function RequestCard({ request, onCancel }) {
   const getStatusColor = (status) => {
     switch(status) {
       case 'PENDING': return 'status-pending';
+      case 'NOTED': return 'status-noted';
       case 'APPROVED': return 'status-approved';
+      case 'REJECT': return 'status-rejected';
       case 'REJECTED': return 'status-rejected';
+      case 'CANCEL': return 'status-canceled';
       case 'CANCELED': return 'status-canceled';
+      case 'RECALL': return 'status-recalled';
       default: return '';
     }
   };
@@ -15,28 +19,28 @@ function RequestCard({ request, onCancel }) {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const formatCredit = (credit, leaveRenderType) => {
-    if (leaveRenderType === 'FULL') return 'Full Day (1.0 day)';
-    if (leaveRenderType === '1ST_HALF') return '1st Half (0.5 day)';
-    if (leaveRenderType === '2ND_HALF') return '2nd Half (0.5 day)';
-    return `${credit || 0} day(s)`;
+  // Get display status
+  const getDisplayStatus = () => {
+    if (request.hrStatus === 'APPROVED') return 'APPROVED';
+    if (request.hrStatus === 'REJECTED') return 'REJECTED';
+    return request.regularStatus || request.status || 'PENDING';
   };
 
-  const displayDate = request.date || request.startDate;
+  const displayStatus = getDisplayStatus();
 
   return (
-    <div className={`request-card ${getStatusColor(request.status)}`}>
+    <div className={`request-card ${getStatusColor(displayStatus)}`}>
       <div className="request-header">
         <span className="request-id">{request.id}</span>
-        <span className={`status-badge ${request.status?.toLowerCase()}`}>
-          {request.status}
+        <span className={`status-badge ${displayStatus.toLowerCase()}`}>
+          {displayStatus}
         </span>
       </div>
       
       <div className="request-body">
         <div className="request-dates">
-          <span>📅 {displayDate ? formatDate(displayDate) : 'Date not specified'}</span>
-          <span>{formatCredit(request.credit, request.leaveRenderType)}</span>
+          <span>📅 {request.dateRange || request.date || 'Date not specified'}</span>
+          <span>{request.totalDays || request.dates?.length || 1} day(s)</span>
         </div>
         <div className="request-leavetype">
           <strong>Leave Type:</strong> {request.leaveType || request.VLTtype || 'Not specified'}
@@ -53,19 +57,18 @@ function RequestCard({ request, onCancel }) {
             <small> Expires: {formatDate(request.expiresAt)}</small>
           )}
         </div>
-        {request.credit && (
-          <div className="request-comments">
-            <small>Credit: {request.credit} day(s)</small>
-          </div>
-        )}
         {request.hrStatus === 'NOTED' && (
           <div className="hr-note">
             ✅ Noted by HR
           </div>
         )}
+        {request.comment && (
+          <div className="request-comments">
+            <small>Comment: {request.comment}</small>
+          </div>
+        )}
       </div>
       
-      {/* Cancel button - only show if onCancel prop is provided (which only happens for PENDING requests) */}
       {onCancel && (
         <div className="request-actions">
           <button onClick={() => onCancel(request.id)} className="cancel-btn">

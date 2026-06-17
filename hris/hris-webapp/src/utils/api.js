@@ -5,7 +5,10 @@ const API_BASE = 'https://script.google.com/macros/s/AKfycbzNXWwFpsPUWVgNbTYVzTz
 const formatDate = (dateString) => {
   if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // Helper to get device info
@@ -78,10 +81,13 @@ login: async (employeeID, password) => {
     return response.json();
   },
 
-  createRequest: async (employeeID, approverID, date, leaveRenderType, credit, leaveType, reason) => {
-    const formattedDate = formatDate(date);
+  createRequest: async (employeeID, fromDate, toDate, totalDays, leaveType, reason) => {
+    // Format dates properly
+    const formattedFromDate = formatDate(fromDate);
+    const formattedToDate = formatDate(toDate);
+    
     const response = await fetch(
-      `${API_BASE}?endpoint=createRequest&employeeID=${encodeURIComponent(employeeID)}&approverID=${encodeURIComponent(approverID)}&date=${encodeURIComponent(formattedDate)}&leaveRenderType=${encodeURIComponent(leaveRenderType)}&credit=${encodeURIComponent(credit)}&leaveType=${encodeURIComponent(leaveType)}&reason=${encodeURIComponent(reason)}`,
+      `${API_BASE}?endpoint=createRequest&employeeID=${encodeURIComponent(employeeID)}&fromDate=${encodeURIComponent(formattedFromDate)}&toDate=${encodeURIComponent(formattedToDate)}&totalDays=${encodeURIComponent(totalDays)}&leaveType=${encodeURIComponent(leaveType)}&reason=${encodeURIComponent(reason)}`,
       { method: 'GET', mode: 'cors', redirect: 'follow' }
     );
     return response.json();
@@ -94,6 +100,67 @@ login: async (employeeID, password) => {
     );
     return response.json();
   },
+
+  recallRequest: async (requestID, employeeID, reason) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=recallRequest&requestID=${encodeURIComponent(requestID)}&employeeID=${encodeURIComponent(employeeID)}&reason=${encodeURIComponent(reason)}`,
+      { method: 'GET', mode: 'cors', redirect: 'follow' }
+    );
+    return response.json();
+  },
+  
+   // ==================== REGULAR APPROVER FUNCTIONS ====================
+  getPendingRegularApprovals: async (approverID) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=getPendingRegularApprovals&approverID=${encodeURIComponent(approverID)}`
+    );
+    return response.json();
+  },
+
+  notedRequest: async (requestID, approverID, comments) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=notedRequest&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+    );
+    return response.json();
+  },
+
+  rejectRegularRequest: async (requestID, approverID, comments) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=rejectRegularRequest&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+    );
+    return response.json();
+  },
+
+  // ==================== FINAL APPROVER FUNCTIONS ====================
+  getPendingFinalApprovals: async (approverID) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=getPendingFinalApprovals&approverID=${encodeURIComponent(approverID)}`
+    );
+    return response.json();
+  },
+
+  approveFinalRequest: async (requestID, approverID, comments) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=approveFinalRequest&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+    );
+    return response.json();
+  },
+
+  rejectFinalRequest: async (requestID, approverID, comments) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=rejectFinalRequest&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+    );
+    return response.json();
+  },
+
+  // ==================== GET USER REQUESTS (for dashboard) ====================
+  getMyRegularApprovals: async (approverID) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=getMyRegularApprovals&approverID=${encodeURIComponent(approverID)}`
+    );
+    return response.json();
+  },
+
 
   // ==================== APPROVER FUNCTIONS ====================
   getPendingApprovals: async (approverID, aprvLevel) => {
@@ -256,7 +323,15 @@ login: async (employeeID, password) => {
       `${API_BASE}?endpoint=getMyAttendance&employeeID=${encodeURIComponent(employeeID)}&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`
     );
     return response.json();
-  }
+  },
+
+  // Get employee by Role ID
+  getEmployeeByRoleId: async (roleId) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=getEmployeeByRoleId&roleId=${encodeURIComponent(roleId)}`
+    );
+    return response.json();
+  },
 };
 
 export default api;

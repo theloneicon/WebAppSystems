@@ -3,38 +3,89 @@ import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
 function Profile({ user }) {
-  const [approverNames, setApproverNames] = useState('');
   const [loading, setLoading] = useState(true);
+  const [regularApproverName, setRegularApproverName] = useState('');
+  const [alternateApproverName, setAlternateApproverName] = useState('');
+  const [finalApproverName, setFinalApproverName] = useState('');
 
   useEffect(() => {
     fetchApproverNames();
-  }, [user.aprvRegAprv, user.deptID, user.aprvLevel]);
+  }, [user.regAprv, user.regAprvAlt, user.finalAprv]);
 
   const fetchApproverNames = async () => {
-    if (!user.aprvRegAprv) {
-      setApproverNames('No approvers configured');
-      setLoading(false);
-      return;
-    }
+    setLoading(true);
 
     try {
-      const result = await api.getApprovers(user.aprvLevel, user.deptID, user.aprvRegAprv);
-      
-      if (result.success && result.approvers.length > 0) {
-        // Extract names from approvers array
-        const names = result.approvers.map(approver => approver.name).join('; ');
-        setApproverNames(names);
+      // Fetch Regular Approver Name
+      if (user.regAprv) {
+        const result = await api.getEmployeeByRoleId(user.regAprv);
+        if (result.success) {
+          setRegularApproverName(result.employee.name);
+        } else {
+          setRegularApproverName(`Role ${user.regAprv} (Not found)`);
+        }
       } else {
-        // Fallback to showing the raw levels if no approvers found
-        setApproverNames(`${user.aprvRegAprv} (No matching users found)`);
+        setRegularApproverName('Not assigned');
       }
+
+      // Fetch Alternate Approver Name
+      if (user.regAprvAlt && user.regAprvAlt !== 0) {
+        const result = await api.getEmployeeByRoleId(user.regAprvAlt);
+        if (result.success) {
+          setAlternateApproverName(result.employee.name);
+        } else {
+          setAlternateApproverName(`Role ${user.regAprvAlt} (Not found)`);
+        }
+      } else {
+        setAlternateApproverName('None');
+      }
+
+      // Fetch Final Approver Name
+      if (user.finalAprv && user.finalAprv !== 0) {
+        const result = await api.getEmployeeByRoleId(user.finalAprv);
+        if (result.success) {
+          setFinalApproverName(result.employee.name);
+        } else {
+          setFinalApproverName(`Role ${user.finalAprv} (Not found)`);
+        }
+      } else {
+        setFinalApproverName('None (Auto-approved)');
+      }
+
     } catch (error) {
       console.error('Error fetching approvers:', error);
-      setApproverNames(user.aprvRegAprv || 'Error loading approvers');
+      setRegularApproverName('Error loading');
+      setAlternateApproverName('Error loading');
+      setFinalApproverName('Error loading');
     } finally {
       setLoading(false);
     }
   };
+
+  // Get role category display
+  const getRoleCategoryDisplay = () => {
+    switch(user.roleCateg) {
+      case 'Normal': return '👤 Normal User';
+      case 'Approver05': return '👑 Regular Approver';
+      case 'Approver08': return '⭐ Final Approver';
+      case 'Approver09': return '🌟 Senior Approver';
+      default: return user.roleCateg || 'Not specified';
+    }
+  };
+
+  // Get role category description
+  const getRoleCategoryDescription = () => {
+    switch(user.roleCateg) {
+      case 'Normal': return 'Cannot approve any requests';
+      case 'Approver05': return 'Can approve as Regular Approver only';
+      case 'Approver08': return 'Can approve as Regular and Final Approver';
+      case 'Approver09': return 'Can approve as Final Approver (Skip approval)';
+      default: return '';
+    }
+  };
+
+  // Determine if using alternate approver
+  const isUsingAlternate = user.altRegAprvFlag === 1 && user.regAprvAlt && user.regAprvAlt !== 0;
 
   return (
     <div className="profile">
@@ -66,27 +117,42 @@ function Profile({ user }) {
             <span>{user.deptName} (ID: {user.deptID})</span>
           </div>
           <div className="detail-row">
-            <label>Approval Level:</label>
-            <span>Level {user.aprvLevel}</span>
+            <label>Role ID:</label>
+            <span>{user.roleId}</span>
           </div>
           <div className="detail-row">
-            <label>Regular Approvers:</label>
+            <label>Role Category:</label>
             <span>
-              {loading ? (
-                'Loading...'
-              ) : (
+              {getRoleCategoryDisplay()}
+              <br />
+              <small className="role-description">{getRoleCategoryDescription()}</small>
+            </span>
+          </div>
+          <div className="detail-row">
+            <label>Regular Approver:</label>
+            <span>
+              {loading ? 'Loading...' : (
                 <>
-                  {user.aprvRegAprv} → {approverNames}
+                  {regularApproverName}
+                  {isUsingAlternate && (
+                    <span className="info-badge"> (Alternate being used)</span>
+                  )}
                 </>
               )}
             </span>
           </div>
           <div className="detail-row">
-            <label>Access Level:</label>
+            <label>Alternate Approver:</label>
+            <span>{loading ? 'Loading...' : alternateApproverName}</span>
+          </div>
+          <div className="detail-row">
+            <label>Final Approver:</label>
+            <span>{loading ? 'Loading...' : finalApproverName}</span>
+          </div>
+          <div className="detail-row">
+            <label>Allowed Regularization:</label>
             <span>
-              {user.aprvLevel === 0 && '👤 Normal User'}
-              {user.aprvLevel === 1 && '👑 Admin'}
-              {user.aprvLevel === 2 && '⭐ Superuser'}
+              {user.allowedRegzn === 1 ? '✅ Yes' : '❌ No'}
             </span>
           </div>
           <div className="detail-row">

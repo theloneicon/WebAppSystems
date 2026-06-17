@@ -31,10 +31,17 @@ function AdminDashboard({ user }) {
     }
   };
 
+  // Get display status for grouping
+  const getDisplayStatus = (request) => {
+    if (request.hrStatus === 'APPROVED') return 'APPROVED';
+    if (request.hrStatus === 'REJECTED') return 'REJECTED';
+    return request.regularStatus || 'PENDING';
+  };
+
   // Filter by status
   const filteredRequests = allRequests.filter(request => {
     if (statusFilter === 'ALL') return true;
-    return request.status === statusFilter;
+    return getDisplayStatus(request) === statusFilter;
   });
 
   // Sort requests
@@ -71,10 +78,14 @@ function AdminDashboard({ user }) {
   const getStatusBadgeClass = (status) => {
     switch(status) {
       case 'PENDING': return 'status-pending';
+      case 'NOTED': return 'status-noted';
       case 'APPROVED': return 'status-approved';
       case 'REJECTED': return 'status-rejected';
+      case 'REJECT': return 'status-rejected';
       case 'CANCELED': return 'status-canceled';
+      case 'CANCEL': return 'status-canceled';
       case 'RECALLED': return 'status-recalled';
+      case 'RECALL': return 'status-recalled';
       default: return '';
     }
   };
@@ -86,15 +97,12 @@ function AdminDashboard({ user }) {
     return date.toISOString().split('T')[0];
   };
 
-  // Format credit display
-  const formatCredit = (credit, leaveRenderType) => {
-    if (leaveRenderType === 'FULL') return 'Full Day (1.0)';
-    if (leaveRenderType === '1ST_HALF') return '1st Half - AM (0.5)';
-    if (leaveRenderType === '2ND_HALF') return '2nd Half - PM (0.5)';
-    return `${credit || 0}`;
-  };
-
   if (loading) return <div className="loading">Loading all requests...</div>;
+
+  // Count by display status
+  const getStatusCount = (status) => {
+    return allRequests.filter(r => getDisplayStatus(r) === status).length;
+  };
 
   return (
     <div className="admin-dashboard">
@@ -131,31 +139,37 @@ function AdminDashboard({ user }) {
           className={statusFilter === 'PENDING' ? 'filter-active' : 'filter-btn'}
           onClick={() => setStatusFilter('PENDING')}
         >
-          Pending ({allRequests.filter(r => r.status === 'PENDING').length})
+          Pending ({getStatusCount('PENDING')})
+        </button>
+        <button 
+          className={statusFilter === 'NOTED' ? 'filter-active' : 'filter-btn'}
+          onClick={() => setStatusFilter('NOTED')}
+        >
+          Noted ({getStatusCount('NOTED')})
         </button>
         <button 
           className={statusFilter === 'APPROVED' ? 'filter-active' : 'filter-btn'}
           onClick={() => setStatusFilter('APPROVED')}
         >
-          Approved ({allRequests.filter(r => r.status === 'APPROVED').length})
+          Approved ({getStatusCount('APPROVED')})
         </button>
         <button 
           className={statusFilter === 'REJECTED' ? 'filter-active' : 'filter-btn'}
           onClick={() => setStatusFilter('REJECTED')}
         >
-          Rejected ({allRequests.filter(r => r.status === 'REJECTED').length})
+          Rejected ({getStatusCount('REJECTED')})
         </button>
         <button 
           className={statusFilter === 'CANCELED' ? 'filter-active' : 'filter-btn'}
           onClick={() => setStatusFilter('CANCELED')}
         >
-          Canceled ({allRequests.filter(r => r.status === 'CANCELED').length})
+          Canceled ({getStatusCount('CANCELED')})
         </button>
         <button 
           className={statusFilter === 'RECALLED' ? 'filter-active' : 'filter-btn'}
           onClick={() => setStatusFilter('RECALLED')}
         >
-          Recalled ({allRequests.filter(r => r.status === 'RECALLED').length})
+          Recalled ({getStatusCount('RECALLED')})
         </button>
       </div>
 
@@ -166,9 +180,8 @@ function AdminDashboard({ user }) {
             <tr>
               <th onClick={() => handleSort('id')}>Request ID {getSortIcon('id')}</th>
               <th onClick={() => handleSort('employeeName')}>Employee {getSortIcon('employeeName')}</th>
-              <th onClick={() => handleSort('date')}>Leave Date {getSortIcon('date')}</th>
-              <th onClick={() => handleSort('credit')}>Credit {getSortIcon('credit')}</th>
-              <th onClick={() => handleSort('leaveRenderType')}>Duration {getSortIcon('leaveRenderType')}</th>
+              <th>Date Range</th>
+              <th onClick={() => handleSort('totalDays')}>Days {getSortIcon('totalDays')}</th>
               <th onClick={() => handleSort('leaveType')}>Type {getSortIcon('leaveType')}</th>
               <th onClick={() => handleSort('status')}>Status {getSortIcon('status')}</th>
               <th onClick={() => handleSort('approverName')}>Approver {getSortIcon('approverName')}</th>
@@ -178,28 +191,30 @@ function AdminDashboard({ user }) {
           <tbody>
             {sortedRequests.length === 0 ? (
               <tr>
-                <td colSpan="9" className="empty-table">
+                <td colSpan="8" className="empty-table">
                   No requests found
                 </td>
               </tr>
             ) : (
-              sortedRequests.map(request => (
-                <tr key={request.id}>
-                  <td className="request-id-cell">{request.id}</td>
-                  <td>{request.employeeName} ({request.employeeID})</td>
-                  <td>{formatDate(request.date) || '-'}</td>
-                  <td className="days-cell">{request.credit || '-'}</td>
-                  <td>{formatCredit(request.credit, request.leaveRenderType)}</td>
-                  <td>{request.leaveType || '-'}</td>
-                  <td>
-                    <span className={`status-badge-table ${getStatusBadgeClass(request.status)}`}>
-                      {request.status}
-                    </span>
-                  </td>
-                  <td>{request.approverName || '-'}</td>
-                  <td>{new Date(request.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))
+              sortedRequests.map(request => {
+                const displayStatus = getDisplayStatus(request);
+                return (
+                  <tr key={request.id}>
+                    <td className="request-id-cell">{request.id}</td>
+                    <td>{request.employeeName} ({request.employeeID})</td>
+                    <td>{request.dateRange || formatDate(request.date) || '-'}</td>
+                    <td className="days-cell">{request.totalDays || 1}</td>
+                    <td>{request.leaveType || '-'}</td>
+                    <td>
+                      <span className={`status-badge-table ${getStatusBadgeClass(displayStatus)}`}>
+                        {displayStatus}
+                      </span>
+                    </td>
+                    <td>{request.approverName || request.regularApproverName || '-'}</td>
+                    <td>{request.createdAt ? new Date(request.createdAt).toLocaleDateString() : '-'}</td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -213,15 +228,19 @@ function AdminDashboard({ user }) {
         </div>
         <div className="summary-card pending">
           <h3>Pending</h3>
-          <p className="summary-number">{allRequests.filter(r => r.status === 'PENDING').length}</p>
+          <p className="summary-number">{getStatusCount('PENDING')}</p>
+        </div>
+        <div className="summary-card noted">
+          <h3>Noted</h3>
+          <p className="summary-number">{getStatusCount('NOTED')}</p>
         </div>
         <div className="summary-card approved">
           <h3>Approved</h3>
-          <p className="summary-number">{allRequests.filter(r => r.status === 'APPROVED').length}</p>
+          <p className="summary-number">{getStatusCount('APPROVED')}</p>
         </div>
         <div className="summary-card rejected">
           <h3>Rejected</h3>
-          <p className="summary-number">{allRequests.filter(r => r.status === 'REJECTED').length}</p>
+          <p className="summary-number">{getStatusCount('REJECTED')}</p>
         </div>
       </div>
     </div>

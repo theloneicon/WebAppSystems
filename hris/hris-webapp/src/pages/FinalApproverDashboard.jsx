@@ -1,4 +1,4 @@
-// src/pages/ApproverDashboard.jsx
+// src/pages/FinalApproverDashboard.jsx
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
@@ -8,7 +8,14 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString();
 };
 
-function ApproverDashboard({ user }) {
+const formatCredit = (credit, leaveRenderType) => {
+  if (leaveRenderType === 'FULL') return 'Full Day (1.0 day)';
+  if (leaveRenderType === '1ST_HALF') return '1st Half - AM (0.5 day)';
+  if (leaveRenderType === '2ND_HALF') return '2nd Half - PM (0.5 day)';
+  return `${credit || 0} day(s)`;
+};
+
+function FinalApproverDashboard({ user }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
@@ -20,19 +27,19 @@ function ApproverDashboard({ user }) {
 
   const loadPendingRequests = async () => {
     setLoading(true);
-    const result = await api.getPendingRegularApprovals(user.id);
+    const result = await api.getPendingFinalApprovals(user.id);
     if (result.success) {
       setPendingRequests(result.requests);
     }
     setLoading(false);
   };
 
-  const handleNoted = async (requestId) => {
-    if (window.confirm('Mark this request as NOTED? It will proceed to final approval.')) {
+  const handleApprove = async (requestId) => {
+    if (window.confirm('Approve this leave request? This will be the final approval.')) {
       setProcessingId(requestId);
-      const result = await api.notedRequest(requestId, user.id, comments[requestId] || '');
+      const result = await api.approveFinalRequest(requestId, user.id, comments[requestId] || '');
       if (result.success) {
-        alert('✅ Request noted and forwarded!');
+        alert('✅ Request approved successfully!');
         await loadPendingRequests();
       } else {
         alert('❌ Error: ' + result.error);
@@ -42,9 +49,9 @@ function ApproverDashboard({ user }) {
   };
 
   const handleReject = async (requestId) => {
-    if (window.confirm('Reject this leave request?')) {
+    if (window.confirm('Reject this leave request? This will be final.')) {
       setProcessingId(requestId);
-      const result = await api.rejectRegularRequest(requestId, user.id, comments[requestId] || '');
+      const result = await api.rejectFinalRequest(requestId, user.id, comments[requestId] || '');
       if (result.success) {
         alert('❌ Request rejected');
         await loadPendingRequests();
@@ -63,12 +70,12 @@ function ApproverDashboard({ user }) {
 
   return (
     <div className="approver-dashboard">
-      <h1>📋 Pending Approvals (Regular Approver)</h1>
-      <p>Requests waiting for your review ({pendingRequests.length})</p>
+      <h1>🏆 Final Approvals</h1>
+      <p>Requests waiting for your final decision ({pendingRequests.length})</p>
 
       {pendingRequests.length === 0 ? (
         <div className="empty-state">
-          <p>✨ No pending requests to review</p>
+          <p>✨ No pending requests for final approval</p>
         </div>
       ) : (
         <div className="requests-list">
@@ -76,19 +83,22 @@ function ApproverDashboard({ user }) {
             <div key={request.id} className="request-card pending">
               <div className="request-header">
                 <span className="request-id">{request.id}</span>
-                <span className="status-badge pending">PENDING</span>
+                <span className="status-badge noted">NOTED</span>
               </div>
               
               <div className="request-body">
                 <div className="request-dates">
-                  <span>📅 {request.dateRange || request.date}</span>
-                  <span>{request.totalDays} day(s)</span>
+                  <span>📅 {formatDate(request.date)}</span>
+                  <span>{formatCredit(request.credit, request.leaveRenderType)}</span>
                 </div>
                 <div className="request-reason">
                   <strong>Employee:</strong> {request.employeeName} ({request.employeeID})
                 </div>
                 <div className="request-reason">
                   <strong>Department:</strong> {request.deptName}
+                </div>
+                <div className="request-reason">
+                  <strong>Regular Approver:</strong> {request.regularApproverName}
                 </div>
                 <div className="request-reason">
                   <strong>Leave Type:</strong> {request.leaveType}
@@ -112,11 +122,11 @@ function ApproverDashboard({ user }) {
               
               <div className="request-actions">
                 <button 
-                  onClick={() => handleNoted(request.id)} 
+                  onClick={() => handleApprove(request.id)} 
                   className="approve-btn"
                   disabled={processingId === request.id}
                 >
-                  {processingId === request.id ? 'Processing...' : '✅ NOTED (Forward)'}
+                  {processingId === request.id ? 'Processing...' : '✅ Approve'}
                 </button>
                 <button 
                   onClick={() => handleReject(request.id)} 
@@ -134,4 +144,4 @@ function ApproverDashboard({ user }) {
   );
 }
 
-export default ApproverDashboard;
+export default FinalApproverDashboard;

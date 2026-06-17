@@ -13,13 +13,13 @@ function RegularizationRequest({ user }) {
   const [reason, setReason] = useState('');
   const [obReference, setObReference] = useState('');
   const [approverID, setApproverID] = useState('');
-  const [approvers, setApprovers] = useState([]);
+  const [finalApprover, setFinalApprover] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingApprovers, setLoadingApprovers] = useState(true);
   const [existingRegularizations, setExistingRegularizations] = useState([]);
 
   useEffect(() => {
-    loadApprovers();
+    loadFinalApprover();
     loadExistingRegularizations();
   }, [user.id]);
 
@@ -27,12 +27,22 @@ function RegularizationRequest({ user }) {
     calculateTotalHours();
   }, [clockIn, clockOut, breakMinutes]);
 
-  const loadApprovers = async () => {
-    const result = await api.getApprovers(user.aprvLevel, user.deptID, user.aprvRegAprv);
+  const loadFinalApprover = async () => {
+    // Since the user object already has finalAprvName and finalAprv (Role ID)
+    // We need to get the actual employee ID from the Role ID
+    const result = await api.getEmployeeByRoleId(user.finalAprv);
     if (result.success) {
-      setApprovers(result.approvers);
-      if (result.approvers.length > 0) {
-        setApproverID(result.approvers[0].id);
+      setFinalApprover(result.employee);
+      setApproverID(result.employee.id);
+    } else {
+      // Fallback: use the user's finalAprvName if available
+      if (user.finalAprvName) {
+        setFinalApprover({
+          id: user.finalAprv,
+          name: user.finalAprvName,
+          position: 'Final Approver'
+        });
+        setApproverID(user.finalAprv);
       }
     }
     setLoadingApprovers(false);
@@ -91,11 +101,11 @@ function RegularizationRequest({ user }) {
       totalHours,
       reason,
       obReference,
-      approverID
+      approverID  // This is now the Final Approver ID
     );
     
     if (result.success) {
-      alert('✅ Regularization request submitted for approval!');
+      alert('✅ Regularization request submitted for final approval!');
       navigate('/my-requests');
     } else {
       alert('❌ Error: ' + result.error);
@@ -124,16 +134,18 @@ function RegularizationRequest({ user }) {
 
       <div className="form-container">
         <form onSubmit={handleSubmit} className="regularization-form">
-          <div className="form-group">
-            <label>Select Approver *</label>
-            <select value={approverID} onChange={(e) => setApproverID(e.target.value)} required>
-              {approvers.map(approver => (
-                <option key={approver.id} value={approver.id}>
-                  {approver.name} ({approver.position}) - Level {approver.aprvLevel}
-                </option>
-              ))}
-            </select>
-            <small>Your supervisor will review this request</small>
+          {/* Final Approver Information (Read-only) */}
+          <div className="approver-info">
+            <div className="info-card">
+              <h4>📋 Approval Routing</h4>
+              <div className="info-row">
+                <span className="info-label">Final Approver:</span>
+                <span className="info-value">
+                  {finalApprover?.name || user.finalAprvName || 'Not assigned'}
+                </span>
+                <span className="info-badge">(Final Approval Required)</span>
+              </div>
+            </div>
           </div>
 
           <div className="form-group">
@@ -170,14 +182,15 @@ function RegularizationRequest({ user }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Total Break (minutes)</label>
-              <select value={breakMinutes} onChange={(e) => setBreakMinutes(parseInt(e.target.value))}>
-                <option value={30}>30 minutes</option>
-                <option value={45}>45 minutes</option>
-                <option value={60}>60 minutes (Standard lunch)</option>
-                <option value={75}>75 minutes</option>
-                <option value={90}>90 minutes</option>
-              </select>
+              <label>Total Break</label>
+              <input 
+                type="text" 
+                value="60 minutes (Standard lunch)" 
+                disabled 
+                className="credit-display"
+              />
+              <input type="hidden" value={60} />
+              <small>Break time is fixed at 60 minutes</small>
             </div>
 
             <div className="form-group">
@@ -230,6 +243,8 @@ function RegularizationRequest({ user }) {
                 <div className="request-body">
                   <div><strong>Date:</strong> {req.date}</div>
                   <div><strong>Hours:</strong> {req.clockIn} - {req.clockOut}</div>
+                  <div><strong>Break:</strong> {req.breakMinutes} minutes</div>
+                  <div><strong>Total:</strong> {req.totalHours} hours</div>
                   <div><strong>Reason:</strong> {req.reason}</div>
                   {req.hr_status === 'NOTED' && (
                     <div className="hr-note">✅ Noted by HR</div>
