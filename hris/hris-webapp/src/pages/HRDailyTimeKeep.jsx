@@ -1,21 +1,20 @@
-// src/pages/AttendanceDashboard.jsx
+// src/pages/HRDailyTimeKeep.jsx
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
-function AttendanceDashboard({ user }) {
+function HRDailyTimeKeep({ user }) {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('ALL');
   const [departments, setDepartments] = useState([]);
   const [summary, setSummary] = useState({
     total: 0,
-    present: 0,
-    absent: 0,
+    clockedIn: 0,
+    clockedOut: 0,
     onLeave: 0,
-    tardy: 0,
+    notClockedIn: 0,
     incomplete: 0
   });
 
@@ -33,15 +32,15 @@ function AttendanceDashboard({ user }) {
       const depts = [...new Set(result.records.map(r => r.deptName))];
       setDepartments(depts);
       
-      // Calculate summary
+      // Calculate summary - Focus on CLOCK IN / CLOCK OUT
       const total = result.records.length;
-      const present = result.records.filter(r => r.clockInTime && r.clockOutTime).length;
-      const absent = result.records.filter(r => !r.clockInTime && !r.isOnLeave).length;
+      const clockedIn = result.records.filter(r => r.clockInTime).length;
+      const clockedOut = result.records.filter(r => r.clockInTime && r.clockOutTime).length;
       const onLeave = result.records.filter(r => r.isOnLeave).length;
-      const tardy = result.records.filter(r => r.tardinessMinutes > 0 && !r.isTardyExcused).length;
+      const notClockedIn = result.records.filter(r => !r.clockInTime && !r.isOnLeave).length;
       const incomplete = result.records.filter(r => r.clockInTime && !r.clockOutTime).length;
       
-      setSummary({ total, present, absent, onLeave, tardy, incomplete });
+      setSummary({ total, clockedIn, clockedOut, onLeave, notClockedIn, incomplete });
     }
     setLoading(false);
   };
@@ -73,7 +72,7 @@ function AttendanceDashboard({ user }) {
       return { text: 'ON LEAVE', class: 'status-leave', icon: '🌴' };
     }
     if (!record.clockInTime) {
-      return { text: 'ABSENT', class: 'status-absent', icon: '❌' };
+      return { text: 'NOT CLOCKED IN', class: 'status-notclocked', icon: '⏳' };
     }
     if (record.clockInTime && !record.clockOutTime) {
       return { text: 'INCOMPLETE', class: 'status-incomplete', icon: '🕐' };
@@ -81,7 +80,7 @@ function AttendanceDashboard({ user }) {
     if (record.tardinessMinutes > 0 && !record.isTardyExcused) {
       return { text: 'LATE', class: 'status-late', icon: '⚠️' };
     }
-    return { text: 'PRESENT', class: 'status-present', icon: '✅' };
+    return { text: 'COMPLETE', class: 'status-complete', icon: '✅' };
   };
 
   const calculateTardyDisplay = (record) => {
@@ -98,19 +97,12 @@ function AttendanceDashboard({ user }) {
 
   // Apply filters
   const filteredAttendance = attendance.filter(record => {
-    // Search filter
     if (searchTerm && !record.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) && 
         !record.employeeId.includes(searchTerm)) {
       return false;
     }
-    // Department filter
     if (departmentFilter !== 'ALL' && record.deptName !== departmentFilter) {
       return false;
-    }
-    // Status filter
-    if (statusFilter !== 'ALL') {
-      const status = getStatusBadge(record).text;
-      if (status !== statusFilter) return false;
     }
     return true;
   });
@@ -123,10 +115,10 @@ function AttendanceDashboard({ user }) {
 
   return (
     <div className="attendance-dashboard-modern">
-      <div className="dashboard-header">
-        <h1>📊 Attendance Monitoring</h1>
+      
+        <h2>📊 Daily Timekeep</h2>
         <p className="subtitle">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-      </div>
+      
 
       {/* Date Selector */}
       <div className="date-controls">
@@ -140,7 +132,6 @@ function AttendanceDashboard({ user }) {
           <button onClick={loadAttendance} className="refresh-btn">⟳ Refresh</button>
         </div>
         
-        {/* Export Button */}
         <button className="export-btn" onClick={() => {
           const csv = filteredAttendance.map(r => 
             `${r.employeeName},${r.deptName},${r.clockInTime || '-'},${r.clockOutTime || '-'},${getStatusBadge(r).text},${calculateTardyDisplay(r)},${calculateUndertimeDisplay(r)}`
@@ -156,48 +147,42 @@ function AttendanceDashboard({ user }) {
         </button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Focus on Clock In/Out */}
       <div className="summary-grid">
         <div className="summary-card-modern total">
-          <div className="card-icon">👥</div>
           <div className="card-info">
             <h3>{summary.total}</h3>
             <p>Total Employees</p>
           </div>
         </div>
-        <div className="summary-card-modern present">
-          <div className="card-icon">✅</div>
+        <div className="summary-card-modern clockedin">
           <div className="card-info">
-            <h3>{summary.present}</h3>
-            <p>Present</p>
+            <h3>{summary.clockedIn}</h3>
+            <p>Clocked In</p>
           </div>
         </div>
-        <div className="summary-card-modern absent">
-          <div className="card-icon">❌</div>
+        <div className="summary-card-modern clockedout">
           <div className="card-info">
-            <h3>{summary.absent}</h3>
-            <p>Absent</p>
+            <h3>{summary.clockedOut}</h3>
+            <p>Clocked Out</p>
           </div>
         </div>
-        <div className="summary-card-modern leave">
-          <div className="card-icon">🌴</div>
+        <div className="summary-card-modern notclockedin">
           <div className="card-info">
-            <h3>{summary.onLeave}</h3>
-            <p>On Leave</p>
-          </div>
-        </div>
-        <div className="summary-card-modern tardy">
-          <div className="card-icon">⚠️</div>
-          <div className="card-info">
-            <h3>{summary.tardy}</h3>
-            <p>Tardy</p>
+            <h3>{summary.notClockedIn}</h3>
+            <p>Not Clocked In</p>
           </div>
         </div>
         <div className="summary-card-modern incomplete">
-          <div className="card-icon">🕐</div>
           <div className="card-info">
             <h3>{summary.incomplete}</h3>
             <p>Incomplete</p>
+          </div>
+        </div>
+        <div className="summary-card-modern leave">
+          <div className="card-info">
+            <h3>{summary.onLeave}</h3>
+            <p>On Leave</p>
           </div>
         </div>
       </div>
@@ -218,14 +203,10 @@ function AttendanceDashboard({ user }) {
             <option key={dept} value={dept}>{dept} ({attendance.filter(r => r.deptName === dept).length})</option>
           ))}
         </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="ALL">All Status</option>
-          <option value="PRESENT">✅ Present ({getStatusCount('PRESENT')})</option>
-          <option value="ABSENT">❌ Absent ({getStatusCount('ABSENT')})</option>
-          <option value="ON LEAVE">🌴 On Leave ({getStatusCount('ON LEAVE')})</option>
-          <option value="LATE">⚠️ Late ({getStatusCount('LATE')})</option>
-          <option value="INCOMPLETE">🕐 Incomplete ({getStatusCount('INCOMPLETE')})</option>
-        </select>
+        <div className="summary-badge">
+          <span className="badge-clockedin">⬆️ {summary.clockedIn} In</span>
+          <span className="badge-clockout">✅ {summary.clockedOut} Out</span>
+        </div>
       </div>
 
       {/* Attendance Table */}
@@ -258,7 +239,7 @@ function AttendanceDashboard({ user }) {
               filteredAttendance.map(record => {
                 const status = getStatusBadge(record);
                 return (
-                  <tr key={record.employeeId} className={status.text === 'ABSENT' ? 'absent-row' : ''}>
+                  <tr key={record.employeeId} className={status.text === 'NOT CLOCKED IN' ? 'absent-row' : ''}>
                     <td className="employee-cell">
                       <span className="employee-name">{record.employeeName}</span>
                       <span className="employee-id">{record.employeeId}</span>
@@ -317,4 +298,4 @@ function AttendanceDashboard({ user }) {
   );
 }
 
-export default AttendanceDashboard;
+export default HRDailyTimeKeep;

@@ -7,6 +7,7 @@ function MyAttendance({ user }) {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showUpcoming, setShowUpcoming] = useState(false);  // ← Toggle for UPCOMING
 
   useEffect(() => {
     loadAttendanceRecords();
@@ -23,11 +24,9 @@ function MyAttendance({ user }) {
 
   const formatTime = (timeString) => {
     if (!timeString) return '-';
-    // If it's already formatted
     if (timeString.match(/(\d+):(\d+)\s*(AM|PM)/i)) {
       return timeString;
     }
-    // If it's a date string
     try {
       const date = new Date(timeString);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -36,28 +35,33 @@ function MyAttendance({ user }) {
     }
   };
 
-    const isFutureDate = (dateString) => {
+  const isFutureDate = (dateString) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const checkDate = new Date(dateString);
     checkDate.setHours(0, 0, 0, 0);
     return checkDate > today;
-    };
+  };
 
-    const getStatusBadge = (record) => {
-    // Check if date is in the future
+  const getStatusBadge = (record) => {
     if (isFutureDate(record.date)) {
-        return <span className="status-badge-table status-upcoming">📅 UPCOMING</span>;
+      return <span className="status-badge-table status-upcoming">📅 UPCOMING</span>;
     }
-    
     if (record.isOnLeave) return <span className="status-badge-table status-leave">🌴 ON LEAVE</span>;
     if (!record.clockInTime) return <span className="status-badge-table status-absent">❌ ABSENT</span>;
     if (record.clockInTime && !record.clockOutTime) return <span className="status-badge-table status-in">🕐 INCOMPLETE</span>;
     return <span className="status-badge-table status-complete">✅ COMPLETE</span>;
-    };
+  };
 
+  // Get filtered records based on toggle
+  const getFilteredRecords = () => {
+    if (showUpcoming) {
+      return attendanceRecords;
+    }
+    return attendanceRecords.filter(record => !isFutureDate(record.date));
+  };
 
-
+  const filteredRecords = getFilteredRecords();
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -70,13 +74,13 @@ function MyAttendance({ user }) {
   const currentDate = new Date();
   currentDate.setHours(0, 0, 0, 0);
 
-  const pastRecords = attendanceRecords.filter(record => {
-  const recordDate = new Date(record.date);
-  recordDate.setHours(0, 0, 0, 0);
-  return recordDate <= currentDate;
+  const pastRecords = filteredRecords.filter(record => {
+    const recordDate = new Date(record.date);
+    recordDate.setHours(0, 0, 0, 0);
+    return recordDate <= currentDate;
   });
 
-const futureCount = attendanceRecords.filter(record => isFutureDate(record.date)).length;
+  const futureCount = attendanceRecords.filter(record => isFutureDate(record.date)).length;
 
   // Calculate summary
   const totalDays = pastRecords.length;
@@ -87,33 +91,46 @@ const futureCount = attendanceRecords.filter(record => isFutureDate(record.date)
   const totalTardiness = pastRecords.reduce((sum, r) => sum + (r.tardinessMinutes || 0), 0);
   const totalUndertime = pastRecords.reduce((sum, r) => sum + (r.undertimeMinutes || 0), 0);
 
-
   if (loading) return <div className="loading">Loading attendance records...</div>;
 
   return (
     <div className="my-attendance">
-      <h1>📅 My Attendance</h1>
-      <p>View your daily attendance records</p>
+      <h2>📅 My Attendance</h2>
+      <div className='my-attendance-desc-page'>
+        View your daily attendance records
+      </div>
+      <div className="attendance-controls">
+        <div className="attendance-filters">
+          <div className="filter-group">
+            <label>Month:</label>
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))}>
+              {months.map((month, idx) => (
+                <option key={idx} value={idx}>{month}</option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-group">
+            <label>Year:</label>
+            <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}>
+              {years.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          <button onClick={loadAttendanceRecords} className="refresh-btn">Refresh</button>
+        </div>
 
-      {/* Month/Year Selector */}
-      <div className="attendance-filters">
-        <div className="filter-group">
-          <label>Month:</label>
-          <select value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))}>
-            {months.map((month, idx) => (
-              <option key={idx} value={idx}>{month}</option>
-            ))}
-          </select>
+        {/* Toggle for UPCOMING */}
+        <div className="toggle-controls">
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={showUpcoming}
+              onChange={() => setShowUpcoming(!showUpcoming)}
+            />
+            Show UPCOMING ({futureCount})
+          </label>
         </div>
-        <div className="filter-group">
-          <label>Year:</label>
-          <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}>
-            {years.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
-        <button onClick={loadAttendanceRecords} className="refresh-btn">Refresh</button>
       </div>
 
       {/* Summary Cards */}
@@ -152,6 +169,13 @@ const futureCount = attendanceRecords.filter(record => isFutureDate(record.date)
         </div>
       </div>
 
+      {/* Future dates notice */}
+      {futureCount > 0 && !showUpcoming && (
+        <div className="alert-info">
+          📌 {futureCount} future date(s) hidden. Toggle "Show UPCOMING" to view them.
+        </div>
+      )}
+
       {/* Attendance Table */}
       <div className="table-container">
         <table className="admin-table">
@@ -167,23 +191,23 @@ const futureCount = attendanceRecords.filter(record => isFutureDate(record.date)
             </tr>
           </thead>
           <tbody>
-            {attendanceRecords.length === 0 ? (
+            {filteredRecords.length === 0 ? (
               <tr>
                 <td colSpan="7" className="empty-table">No attendance records found</td>
               </tr>
             ) : (
-              attendanceRecords.map((record, idx) => (
-                <tr key={idx}>
-                  <td>{record.date}</td>
+              filteredRecords.map((record, idx) => (
+                <tr key={idx} className={isFutureDate(record.date) ? 'future-row' : ''}>
+                  <td className={isFutureDate(record.date) ? 'future-date' : ''}>{record.date}</td>
                   <td>{record.schedArrangement || '-'}</td>
                   <td>{formatTime(record.clockInTime)}</td>
                   <td>{formatTime(record.clockOutTime)}</td>
                   <td>{getStatusBadge(record)}</td>
-                  <td className={record.tardinessMinutes > 0 && !record.isTardyExcused ? 'violation-cell' : ''}>
-                    {record.tardinessMinutes > 0 ? `${record.tardinessMinutes} min` : '-'}
+                  <td className={record.tardinessMinutes > 0 && !record.isTardyExcused && !isFutureDate(record.date) ? 'violation-cell' : ''}>
+                    {record.tardinessMinutes > 0 && !isFutureDate(record.date) ? `${record.tardinessMinutes} min` : '-'}
                   </td>
-                  <td className={record.undertimeMinutes > 0 && !record.isUndertimeExcused ? 'violation-cell' : ''}>
-                    {record.undertimeMinutes > 0 ? `${record.undertimeMinutes} min` : '-'}
+                  <td className={record.undertimeMinutes > 0 && !record.isUndertimeExcused && !isFutureDate(record.date) ? 'violation-cell' : ''}>
+                    {record.undertimeMinutes > 0 && !isFutureDate(record.date) ? `${record.undertimeMinutes} min` : '-'}
                   </td>
                 </tr>
               ))

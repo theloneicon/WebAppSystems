@@ -10,7 +10,7 @@ function NewRequest({ user }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [checking, setChecking] = useState(true);
   const [showWarning, setShowWarning] = useState(false);
-  const [pendingFormData, setPendingFormData] = useState(null); // ← Store form data
+  const [pendingFormData, setPendingFormData] = useState(null);
 
   useEffect(() => {
     checkPendingRequests();
@@ -19,7 +19,14 @@ function NewRequest({ user }) {
   const checkPendingRequests = async () => {
     const result = await api.getMyRequests(user.id);
     if (result.success) {
-      const pending = result.requests.filter(r => r.status === 'PENDING');
+      // Only consider a request as pending if:
+      // 1. Regular_Status is 'PENDING' (waiting for regular approver)
+      // 2. OR Regular_Status is 'NOTED' AND HR_Status is 'PENDING' (waiting for final approver)
+      // CANCELED, REJECT, RECALL are terminal - NOT pending
+      const pending = result.requests.filter(r => 
+        r.regularStatus === 'PENDING' || 
+        (r.regularStatus === 'NOTED' && r.hrStatus === 'PENDING')
+      );
       setHasPending(pending.length > 0);
       setPendingRequests(pending);
     }
@@ -27,28 +34,33 @@ function NewRequest({ user }) {
   };
 
   const handleSubmit = async (formData) => {
-  const dataToSubmit = pendingFormData || formData;
-  
-  const result = await api.createRequest(
-    user.id,
-    dataToSubmit.approverID,
-    dataToSubmit.date,           // Single date instead of startDate
-    dataToSubmit.leaveRenderType, // FULL, 1ST_HALF, 2ND_HALF
-    dataToSubmit.credit,         // 1 or 0.5
-    dataToSubmit.leaveType,
-    dataToSubmit.reason
-  );
-  
-  if (result.success) {
-    alert(result.message);
-    navigate('/my-requests');
-  } else {
-    alert(result.error);
-  }
-  
-  setShowWarning(false);
-  setPendingFormData(null);
-};
+    if (hasPending && !showWarning) {
+      setPendingFormData(formData);
+      setShowWarning(true);
+      return;
+    }
+    
+    const dataToSubmit = pendingFormData || formData;
+    
+    const result = await api.createRequest(
+      user.id,
+      dataToSubmit.fromDate,
+      dataToSubmit.toDate,
+      dataToSubmit.totalDays,
+      dataToSubmit.leaveType,
+      dataToSubmit.reason
+    );
+    
+    if (result.success) {
+      alert(result.message);
+      navigate('/my-requests');
+    } else {
+      alert('❌ Error: ' + result.error);
+    }
+    
+    setShowWarning(false);
+    setPendingFormData(null);
+  };
 
   const cancelSubmit = () => {
     setShowWarning(false);
@@ -59,9 +71,8 @@ function NewRequest({ user }) {
 
   return (
     <div className="new-request">
-      <h1>New Leave Request</h1>
+      <h2>✨ New Leave Request</h2>
       
-      {/* Warning Banner - Always visible if there are pending requests */}
       {hasPending && !showWarning && (
         <div className="alert alert-warning">
           <h3>⚠️ Pending Request Reminder</h3>
@@ -69,15 +80,14 @@ function NewRequest({ user }) {
           <ul>
             {pendingRequests.map(req => (
               <li key={req.id}>
-                {req.startDate} to {req.endDate} - {req.reason}
+                {req.dateRange || req.date} - {req.leaveType} ({req.regularStatus || req.hrStatus})
               </li>
             ))}
           </ul>
-          <p>You can still submit a new request, but please ensure the dates don't overlap.</p>
+          <p>You can still submit a new request.</p>
         </div>
       )}
       
-      {/* Confirmation Dialog for submitting with pending requests */}
       {showWarning && (
         <div className="modal-overlay">
           <div className="modal">
@@ -87,7 +97,7 @@ function NewRequest({ user }) {
             <div className="modal-actions">
               <button onClick={handleSubmit} className="confirm-btn">
                 Yes, Submit Anyway
-              </button>&nbsp;
+              </button>
               <button onClick={cancelSubmit} className="cancel-btn">
                 No, Go Back
               </button>

@@ -3,10 +3,19 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
+
 function Navbar({ user, onLogout }) {
   const location = useLocation();
-  const isApprover = user?.aprvLevel > 0;
+  
+  // Role-based access control - USING ROLE_CATEG
   const isAdmin = user?.accessLevel === 1;
+  const isRegularApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07';
+  const isFinalApprover = user?.roleCateg === 'Approver08';
+  const isDeptApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07';
+  
+  // Check if user is allowed to file Regularization (Official Business)
+  const canRegularize = user?.allowedRegzn === 1;
+  
   const [todayStatus, setTodayStatus] = useState(null);
   const [clocking, setClocking] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -15,7 +24,6 @@ function Navbar({ user, onLogout }) {
   useEffect(() => {
     if (user?.id) {
       checkTodayStatus();
-      // Check localStorage for pending clock-out
       const stored = localStorage.getItem(`pendingClockOut_${user.id}`);
       console.log('Stored pendingClockOut:', stored);
       setPendingClockOut(stored === 'true');
@@ -28,7 +36,6 @@ function Navbar({ user, onLogout }) {
     if (result.success) {
       setTodayStatus(result);
       
-      // If user is clocked in but not clocked out, ensure flag is set
       if (result.clockedIn && !result.clockedOut) {
         console.log('User is clocked in but not out, setting flag');
         localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
@@ -56,7 +63,6 @@ function Navbar({ user, onLogout }) {
 
     if (result.success) {
       alert('✅ Clocked In successfully!');
-      // Store in localStorage that clock-out is pending
       localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
       setPendingClockOut(true);
       await checkTodayStatus();
@@ -83,7 +89,6 @@ function Navbar({ user, onLogout }) {
     console.log('Clock out result:', result);
     if (result.success) {
       alert('✅ Clocked Out successfully!');
-      // Clear the pending flag
       localStorage.removeItem(`pendingClockOut_${user.id}`);
       setPendingClockOut(false);
       await checkTodayStatus();
@@ -95,14 +100,15 @@ function Navbar({ user, onLogout }) {
 
   const getRoleIcon = () => {
     if (user?.accessLevel === 1) return '🔧';
-    if (user?.aprvLevel > 0) return '👑';
+    if (isRegularApprover || isFinalApprover) return '👑';
     return '👤';
   };
 
   const getRoleName = () => {
     if (user?.accessLevel === 1) return 'Admin';
-    if (user?.aprvLevel > 0) return 'Approver';
-    return 'User';
+    if (isFinalApprover) return 'Senior Approver';
+    if (isRegularApprover) return 'Regular Approver';
+    return 'Normal User';
   };
 
   const handleMouseEnter = (dropdown) => {
@@ -113,14 +119,11 @@ function Navbar({ user, onLogout }) {
     setOpenDropdown(null);
   };
 
-  // Add this helper function at the top of Navbar.jsx
   const formatTimeDisplay = (timeString) => {
     if (!timeString) return '';
-    // If it's already in HH:MM AM/PM format
     if (timeString.match(/(\d+):(\d+)\s*(AM|PM)/i)) {
       return timeString;
     }
-    // If it's an ISO string, extract and format time
     try {
       const date = new Date(timeString);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -129,11 +132,6 @@ function Navbar({ user, onLogout }) {
     }
   };
 
-
-  // Clock-out is enabled if:
-  // 1. User has clocked in today (from server)
-  // 2. User has NOT clocked out today (from server)
-  // 3. There's a pending flag in localStorage
   const shouldShowClockOut = todayStatus?.clockedIn && !todayStatus?.clockedOut;
   const isClockOutEnabled = shouldShowClockOut && pendingClockOut;
 
@@ -190,68 +188,96 @@ function Navbar({ user, onLogout }) {
 
       {/* Navigation Menu with Dropdowns */}
       <div className="nav-links">
-        {/* Dashboard Dropdown */}
-      <div 
-        className="dropdown"
-        onMouseEnter={() => handleMouseEnter('dashboard')}
-        onMouseLeave={handleMouseLeave}
-      >
-        <button className="dropdown-btn">
-          <span className="nav-icon">📊</span> Dashboard <span className="dropdown-arrow">▼</span>
-        </button>
-        {openDropdown === 'dashboard' && (
-          <div className="dropdown-content">
-            <Link to="/dashboard" onClick={() => setOpenDropdown(null)}>
-              <span className="nav-icon">📊</span> My Leaves Status
-            </Link>
-            <Link to="/my-attendance" onClick={() => setOpenDropdown(null)}>
-              <span className="nav-icon">📅</span> My Attendance
-            </Link>
-            {isAdmin && (
-              <>
-                <Link to="/attendance" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">📊</span> Attendance
+        {/* My Dashboard Dropdown - For Normal Users */}
+        <div 
+          className="dropdown"
+          onMouseEnter={() => handleMouseEnter('mydashboard')}
+          onMouseLeave={handleMouseLeave}
+        >
+          <button className="dropdown-btn">
+            <span className="nav-icon">👤</span> My Dashboard <span className="dropdown-arrow">▼</span>
+          </button>
+          {openDropdown === 'mydashboard' && (
+            <div className="dropdown-content">
+              <Link to="/dashboard" onClick={() => setOpenDropdown(null)}>
+                <span className="nav-icon">📊</span> Leaves Record
+              </Link>
+              <Link to="/my-attendance" onClick={() => setOpenDropdown(null)}>
+                <span className="nav-icon">📅</span> Attendance Record
+              </Link>
+              <Link to="/my-requests" onClick={() => setOpenDropdown(null)}>
+                <span className="nav-icon">📋</span> Leave Requests
+              </Link>
+              <Link to="/new-request" onClick={() => setOpenDropdown(null)}>
+                <span className="nav-icon">✨</span> File New Leaves
+              </Link>
+              {canRegularize && (
+                <Link to="/regularization" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">🔄</span> Regularization
                 </Link>
-                <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">🔧</span> HR Acknowledgement
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Team Dashboard Dropdown - For Approvers (Approver05 & Approver08 & Approver07) */}
+        {isDeptApprover && (
+          <div 
+            className="dropdown"
+            onMouseEnter={() => handleMouseEnter('teamdashboard')}
+            onMouseLeave={handleMouseLeave}
+          >
+            <button className="dropdown-btn">
+              <span className="nav-icon">👥</span> Team Dashboard <span className="dropdown-arrow">▼</span>
+            </button>
+            {openDropdown === 'teamdashboard' && (
+              <div className="dropdown-content">
+                <Link to="/dept-requests" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📋</span> Team Leave Status
+                </Link>
+                <Link to="/team-attendance" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📅</span> Team Attendance
+                </Link>
+                {isRegularApprover && (
+                  <Link to="/approvals" onClick={() => setOpenDropdown(null)}>
+                    <span className="nav-icon">✅</span> Team Leave Approvals
+                  </Link>
+                )}
+                {isFinalApprover && (
+                  <Link to="/final-approvals" onClick={() => setOpenDropdown(null)}>
+                    <span className="nav-icon">🏆</span> Final Approvals
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Admin Dropdown - For Admin only */}
+        {isAdmin && (
+          <div 
+            className="dropdown"
+            onMouseEnter={() => handleMouseEnter('admin')}
+            onMouseLeave={handleMouseLeave}
+          >
+            <button className="dropdown-btn">
+              <span className="nav-icon">🔧</span> Admin <span className="dropdown-arrow">▼</span>
+            </button>
+            {openDropdown === 'admin' && (
+              <div className="dropdown-content">
+                <Link to="/daily-timekeep" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📊</span> Daily Timekeep
                 </Link>
                 <Link to="/admin" onClick={() => setOpenDropdown(null)}>
                   <span className="nav-icon">📋</span> All Leaves Status
                 </Link>
-              </>
+                <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">🔧</span> HR Acknowledgement
+                </Link>
+              </div>
             )}
           </div>
         )}
-      </div>
-
-        {/* Leaves Dropdown */}
-        <div 
-          className="dropdown"
-          onMouseEnter={() => handleMouseEnter('leaves')}
-          onMouseLeave={handleMouseLeave}
-        >
-          <button className="dropdown-btn">
-            <span className="nav-icon">📋</span> Leaves <span className="dropdown-arrow">▼</span>
-          </button>
-          {openDropdown === 'leaves' && (
-            <div className="dropdown-content">
-              <Link to="/my-requests" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">📋</span> My Leaves
-              </Link>
-              <Link to="/new-request" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">✨</span> New Leaves
-              </Link>
-              {isApprover && (
-                <Link to="/approvals" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">✅</span> Leave Approvals
-                </Link>
-              )}
-              <Link to="/regularization" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">🔄</span> Regularization
-              </Link>
-            </div>
-          )}
-        </div>
 
         {/* Profile Link (no dropdown) */}
         <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
