@@ -232,23 +232,18 @@ function Navbar({ user, onLogout }) {
             </button>
             {openDropdown === 'teamdashboard' && (
               <div className="dropdown-content">
+                {isRegularApprover && (
+                  <Link to="/approvals" onClick={() => setOpenDropdown(null)}>
+                    <span className="nav-icon">✅</span>Team Leave Mngt
+                  </Link>
+                )}                
                 <Link to="/dept-requests" onClick={() => setOpenDropdown(null)}>
                   <span className="nav-icon">📋</span> Team Leave Status
                 </Link>
                 <Link to="/team-attendance" onClick={() => setOpenDropdown(null)}>
                   <span className="nav-icon">📅</span> Team Attendance
                 </Link>
-                {isRegularApprover && (
-                  <Link to="/approvals" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">✅</span> Team Leave Approvals
-                  </Link>
-                )}
-                {isFinalApprover && (
-                  <Link to="/final-approvals" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">🏆</span> Final Approvals
-                  </Link>
-                )}
-              </div>
+               </div>
             )}
           </div>
         )}
@@ -265,12 +260,20 @@ function Navbar({ user, onLogout }) {
             </button>
             {openDropdown === 'admin' && (
               <div className="dropdown-content">
-                <Link to="/daily-timekeep" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">📊</span> Daily Timekeep
-                </Link>
+                {isFinalApprover && (
+                  <Link to="/final-approvals" onClick={() => setOpenDropdown(null)}>
+                    <span className="nav-icon">✅</span> All Leaves Mngt
+                  </Link>
+                )}      
+              <Link to="/all-attendance" onClick={() => setOpenDropdown(null)}>
+                <span className="nav-icon">📅</span> All Attendance
+              </Link>          
                 <Link to="/admin" onClick={() => setOpenDropdown(null)}>
                   <span className="nav-icon">📋</span> All Leaves Status
                 </Link>
+                <Link to="/daily-timekeep" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📊</span> Daily Timekeep
+                </Link>                
                 <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
                   <span className="nav-icon">🔧</span> HR Acknowledgement
                 </Link>

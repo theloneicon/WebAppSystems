@@ -11,6 +11,7 @@ import HRDailyTimeKeep from '../pages/HRDailyTimeKeep';
 import HRDashboard from '../pages/HRDashboard';
 import RegularizationRequest from '../pages/RegularizationRequest';
 import MyAttendance from '../pages/MyAttendance';
+import HRAllAttendance from '../pages/HRAllAttendance';
 import TeamAttendance from '../pages/TeamAttendance';
 import DeptLeaveDashboard from '../pages/DeptLeaveDashboard';
 
@@ -54,6 +55,7 @@ function AppRoutes({ user }) {
       {/* Admin Routes */}
       {isAdmin && (
         <>
+          <Route path="/all-attendance" element={<HRAllAttendance user={user} />} />
           <Route path="/daily-timekeep" element={<HRDailyTimeKeep user={user} />} />
           <Route path="/hr-dashboard" element={<HRDashboard user={user} />} />
           <Route path="/admin" element={<AdminLeaveDashboard user={user} />} />

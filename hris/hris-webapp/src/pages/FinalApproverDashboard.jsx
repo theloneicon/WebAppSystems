@@ -7,6 +7,7 @@ function FinalApproverDashboard({ user }) {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [comments, setComments] = useState({});
+  const [showReasonModal, setShowReasonModal] = useState(null);
 
   useEffect(() => {
     loadPendingRequests();
@@ -53,18 +54,23 @@ function FinalApproverDashboard({ user }) {
     setComments(prev => ({ ...prev, [requestId]: value }));
   };
 
-  // Simple helper at the top of the file
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString();
   };
 
+  const truncateText = (text, maxLength = 20) => {
+    if (!text) return '-';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
   if (loading) return <div className="loading">Loading pending approvals...</div>;
 
   return (
     <div className="leaves-approver-dashboard">
-      <h2>🏆 Final Approvals</h2>
+      <h2>✅ All Leaves Management</h2>
       <p>Requests waiting for your final decision ({pendingRequests.length})</p>
 
       {pendingRequests.length === 0 ? (
@@ -103,7 +109,20 @@ function FinalApproverDashboard({ user }) {
                   <td className="days-cell">{request.totalDays || 1}</td>
                   <td>{request.leaveType}</td>
                   <td>{request.regularApproverName}</td>
-                  <td>{request.reason}</td>
+                  <td>
+                    <div className="reason-cell">
+                      <span className="reason-text">{truncateText(request.reason, 20)}</span>
+                      {request.reason && request.reason.length > 20 && (
+                        <button 
+                          className="reason-popup-btn"
+                          onClick={() => setShowReasonModal(request.id)}
+                          title="View full reason"
+                        >
+                          📄
+                        </button>
+                      )}
+                    </div>
+                  </td>
                   <td>{new Date(request.createdAt).toLocaleDateString()}</td>
                   <td>
                     <textarea
@@ -136,6 +155,28 @@ function FinalApproverDashboard({ user }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Reason Popup Modal */}
+      {showReasonModal && (
+        <div className="modal-overlay" onClick={() => setShowReasonModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>📝 Full Reason</h3>
+              <button className="modal-close" onClick={() => setShowReasonModal(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p><strong>Request ID:</strong> {pendingRequests.find(r => r.id === showReasonModal)?.id}</p>
+              <p><strong>Employee:</strong> {pendingRequests.find(r => r.id === showReasonModal)?.employeeName}</p>
+              <div className="full-reason">
+                {pendingRequests.find(r => r.id === showReasonModal)?.reason}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => setShowReasonModal(null)} className="modal-close-btn">Close</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
