@@ -65,7 +65,7 @@ function ApproverDashboard({ user }) {
 
   return (
     <div className="leaves-approver-dashboard">
-      <h2>📋 Pending Approvals (Regular Approver)</h2>
+      <h2>✅ Team Leaves Management</h2>
       <p>Requests waiting for your review ({pendingRequests.length})</p>
 
       {pendingRequests.length === 0 ? (

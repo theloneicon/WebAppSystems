@@ -337,6 +337,14 @@ export const api = {
     console.log('getTeamAttendance response:', data);
     return data;
   },
+
+  // Get all attendance for all departments (HR Admin)
+  getAllAttendance: async (month, year) => {
+    const response = await fetch(
+      `${API_BASE}?endpoint=getAllAttendance&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`
+    );
+    return response.json();
+  },
 };
 
 export default api;
