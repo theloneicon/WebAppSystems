@@ -1,8 +1,20 @@
-// src/pages/AdminDashboard.jsx
+// src/pages/AdminLeaveDashboard.jsx
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
-function AdminDashboard({ user }) {
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString();
+};
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleString();
+};
+
+function AdminLeaveDashboard({ user }) {
   const [allRequests, setAllRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -49,7 +61,7 @@ function AdminDashboard({ user }) {
     let aVal = a[sortField];
     let bVal = b[sortField];
     
-    if (sortField === 'createdAt' || sortField === 'date') {
+    if (sortField === 'createdAt' || sortField === 'date' || sortField === 'statusUpdateDT' || sortField === 'hrActionDT') {
       aVal = new Date(aVal);
       bVal = new Date(bVal);
     }
@@ -90,13 +102,6 @@ function AdminDashboard({ user }) {
     }
   };
 
-  // Helper function to format date as YYYY-MM-DD
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
-  };
-
   if (loading) return <div className="loading">Loading all requests...</div>;
 
   // Count by display status
@@ -105,9 +110,9 @@ function AdminDashboard({ user }) {
   };
 
   return (
-    <div className="admin-dashboard">
-      <h1>🔧 Admin Dashboard</h1>
-      <p>Manage and monitor all leave requests</p>
+    <div>
+      <h2>🔧 Admin Leave Dashboard</h2>
+      <p>Manage and monitor all leave requests across all departments</p>
 
       {/* Notification Banner - Today's Activity */}
       <div className="notification-banner">
@@ -124,6 +129,30 @@ function AdminDashboard({ user }) {
               <span className="stat-label">New Approved Request{todaysStats.newApproved !== 1 ? 's' : ''}</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="summary-cards">
+        <div className="summary-card">
+          <h3>Total Requests</h3>
+          <p className="summary-number">{allRequests.length}</p>
+        </div>
+        <div className="summary-card pending">
+          <h3>Pending</h3>
+          <p className="summary-number">{getStatusCount('PENDING')}</p>
+        </div>
+        <div className="summary-card noted">
+          <h3>Noted</h3>
+          <p className="summary-number">{getStatusCount('NOTED')}</p>
+        </div>
+        <div className="summary-card approved">
+          <h3>Approved</h3>
+          <p className="summary-number">{getStatusCount('APPROVED')}</p>
+        </div>
+        <div className="summary-card rejected">
+          <h3>Rejected</h3>
+          <p className="summary-number">{getStatusCount('REJECTED')}</p>
         </div>
       </div>
 
@@ -179,19 +208,23 @@ function AdminDashboard({ user }) {
           <thead>
             <tr>
               <th onClick={() => handleSort('id')}>Request ID {getSortIcon('id')}</th>
+              <th onClick={() => handleSort('createdAt')}>Created {getSortIcon('createdAt')}</th>
               <th onClick={() => handleSort('employeeName')}>Employee {getSortIcon('employeeName')}</th>
               <th>Date Range</th>
               <th onClick={() => handleSort('totalDays')}>Days {getSortIcon('totalDays')}</th>
-              <th onClick={() => handleSort('leaveType')}>Type {getSortIcon('leaveType')}</th>
-              <th onClick={() => handleSort('status')}>Status {getSortIcon('status')}</th>
-              <th onClick={() => handleSort('approverName')}>Approver {getSortIcon('approverName')}</th>
-              <th onClick={() => handleSort('createdAt')}>Submitted {getSortIcon('createdAt')}</th>
+              <th onClick={() => handleSort('leaveType')}>Leave Type {getSortIcon('leaveType')}</th>
+              <th onClick={() => handleSort('regularStatus')}>Regular Status {getSortIcon('regularStatus')}</th>
+              <th onClick={() => handleSort('approverName')}>Regular Approver {getSortIcon('approverName')}</th>
+              <th onClick={() => handleSort('statusUpdateDT')}>Status Update {getSortIcon('statusUpdateDT')}</th>
+              <th onClick={() => handleSort('hrStatus')}>HR Status {getSortIcon('hrStatus')}</th>
+              <th onClick={() => handleSort('hrNameNotedBy')}>HR Noted By {getSortIcon('hrNameNotedBy')}</th>
+              <th onClick={() => handleSort('hrActionDT')}>HR Action Date {getSortIcon('hrActionDT')}</th>
             </tr>
           </thead>
           <tbody>
             {sortedRequests.length === 0 ? (
               <tr>
-                <td colSpan="8" className="empty-table">
+                <td colSpan="12" className="empty-table">
                   No requests found
                 </td>
               </tr>
@@ -201,17 +234,27 @@ function AdminDashboard({ user }) {
                 return (
                   <tr key={request.id}>
                     <td className="request-id-cell">{request.id}</td>
+                    <td>{request.createdAt ? formatDateTime(request.createdAt) : '-'}</td>
                     <td>{request.employeeName} ({request.employeeID})</td>
                     <td>{request.dateRange || formatDate(request.date) || '-'}</td>
                     <td className="days-cell">{request.totalDays || 1}</td>
                     <td>{request.leaveType || '-'}</td>
                     <td>
-                      <span className={`status-badge-table ${getStatusBadgeClass(displayStatus)}`}>
-                        {displayStatus}
+                      <span className={`status-badge-table ${getStatusBadgeClass(request.regularStatus)}`}>
+                        {request.regularStatus || 'PENDING'}
                       </span>
                     </td>
                     <td>{request.approverName || request.regularApproverName || '-'}</td>
-                    <td>{request.createdAt ? new Date(request.createdAt).toLocaleDateString() : '-'}</td>
+                    <td>{request.statusUpdateDT ? formatDateTime(request.statusUpdateDT) : '-'}</td>
+                    <td>
+                      {request.hrStatus && request.hrStatus !== 'PENDING' ? (
+                        <span className={`status-badge-table ${getStatusBadgeClass(request.hrStatus)}`}>
+                          {request.hrStatus}
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td>{request.hrNameNotedBy || '-'}</td>
+                    <td>{request.hrActionDT ? formatDateTime(request.hrActionDT) : '-'}</td>
                   </tr>
                 );
               })
@@ -219,32 +262,8 @@ function AdminDashboard({ user }) {
           </tbody>
         </table>
       </div>
-
-      {/* Summary Cards */}
-      <div className="summary-cards">
-        <div className="summary-card">
-          <h3>Total Requests</h3>
-          <p className="summary-number">{allRequests.length}</p>
-        </div>
-        <div className="summary-card pending">
-          <h3>Pending</h3>
-          <p className="summary-number">{getStatusCount('PENDING')}</p>
-        </div>
-        <div className="summary-card noted">
-          <h3>Noted</h3>
-          <p className="summary-number">{getStatusCount('NOTED')}</p>
-        </div>
-        <div className="summary-card approved">
-          <h3>Approved</h3>
-          <p className="summary-number">{getStatusCount('APPROVED')}</p>
-        </div>
-        <div className="summary-card rejected">
-          <h3>Rejected</h3>
-          <p className="summary-number">{getStatusCount('REJECTED')}</p>
-        </div>
-      </div>
     </div>
   );
 }
 
-export default AdminDashboard;
+export default AdminLeaveDashboard;

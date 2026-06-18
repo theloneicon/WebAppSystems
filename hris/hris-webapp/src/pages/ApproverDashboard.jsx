@@ -2,17 +2,12 @@
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString();
-};
-
 function ApproverDashboard({ user }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [comments, setComments] = useState({});
+  const [showReasonModal, setShowReasonModal] = useState(null);
 
   useEffect(() => {
     loadPendingRequests();
@@ -59,11 +54,18 @@ function ApproverDashboard({ user }) {
     setComments(prev => ({ ...prev, [requestId]: value }));
   };
 
+  // Truncate text helper
+  const truncateText = (text, maxLength = 20) => {
+    if (!text) return '-';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
   if (loading) return <div className="loading">Loading pending approvals...</div>;
 
   return (
-    <div className="approver-dashboard">
-      <h1>📋 Pending Approvals (Regular Approver)</h1>
+    <div className="leaves-approver-dashboard">
+      <h2>📋 Pending Approvals (Regular Approver)</h2>
       <p>Requests waiting for your review ({pendingRequests.length})</p>
 
       {pendingRequests.length === 0 ? (
@@ -71,63 +73,99 @@ function ApproverDashboard({ user }) {
           <p>✨ No pending requests to review</p>
         </div>
       ) : (
-        <div className="requests-list">
-          {pendingRequests.map(request => (
-            <div key={request.id} className="request-card pending">
-              <div className="request-header">
-                <span className="request-id">{request.id}</span>
-                <span className="status-badge pending">PENDING</span>
-              </div>
-              
-              <div className="request-body">
-                <div className="request-dates">
-                  <span>📅 {request.dateRange || request.date}</span>
-                  <span>{request.totalDays} day(s)</span>
-                </div>
-                <div className="request-reason">
-                  <strong>Employee:</strong> {request.employeeName} ({request.employeeID})
-                </div>
-                <div className="request-reason">
-                  <strong>Department:</strong> {request.deptName}
-                </div>
-                <div className="request-reason">
-                  <strong>Leave Type:</strong> {request.leaveType}
-                </div>                
-                <div className="request-reason">
-                  <strong>Reason:</strong> {request.reason}
-                </div>
-                <div className="request-created">
-                  <small>Submitted: {new Date(request.createdAt).toLocaleString()}</small>
-                </div>
-                <div className="form-group">
-                  <label>Comments (optional):</label>
-                  <textarea
-                    value={comments[request.id] || ''}
-                    onChange={(e) => updateComment(request.id, e.target.value)}
-                    placeholder="Add any notes or remarks..."
-                    rows="2"
-                  />
-                </div>
-              </div>
-              
-              <div className="request-actions">
-                <button 
-                  onClick={() => handleNoted(request.id)} 
-                  className="approve-btn"
-                  disabled={processingId === request.id}
-                >
-                  {processingId === request.id ? 'Processing...' : '✅ NOTED (Forward)'}
-                </button>
-                <button 
-                  onClick={() => handleReject(request.id)} 
-                  className="reject-btn"
-                  disabled={processingId === request.id}
-                >
-                  {processingId === request.id ? 'Processing...' : '❌ Reject'}
-                </button>
+        <div className="table-container">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Employee</th>
+                <th>Department</th>
+                <th>Date Range</th>
+                <th>Days</th>
+                <th>Leave Type</th>
+                <th>Reason</th>
+                <th>Submitted</th>
+                <th>Comments</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingRequests.map(request => (
+                <tr key={request.id}>
+                  <td className="request-id-cell">{request.id}</td>
+                  <td>{request.employeeName}<br/><small>{request.employeeID}</small></td>
+                  <td>{request.deptName}</td>
+                  <td>{request.dateRange || request.date}</td>
+                  <td className="days-cell">{request.totalDays}</td>
+                  <td>{request.leaveType}</td>
+                  <td>
+                    <div className="reason-cell">
+                      <span className="reason-text">{truncateText(request.reason, 20)}</span>
+                      {request.reason && request.reason.length > 20 && (
+                        <button 
+                          className="reason-popup-btn"
+                          onClick={() => setShowReasonModal(request.id)}
+                          title="View full reason"
+                        >
+                          📄
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td>{new Date(request.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <textarea
+                      value={comments[request.id] || ''}
+                      onChange={(e) => updateComment(request.id, e.target.value)}
+                      placeholder="Add remarks..."
+                      rows="1"
+                      className="comment-input"
+                    />
+                  </td>
+                  <td>
+                    <div className="action-buttons">
+                      <button 
+                        onClick={() => handleNoted(request.id)} 
+                        className="action-btn approve-btn-small"
+                        disabled={processingId === request.id}
+                      >
+                        {processingId === request.id ? '...' : '✅ Noted'}
+                      </button>
+                      <button 
+                        onClick={() => handleReject(request.id)} 
+                        className="action-btn reject-btn-small"
+                        disabled={processingId === request.id}
+                      >
+                        {processingId === request.id ? '...' : '❌ Reject'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Reason Popup Modal */}
+      {showReasonModal && (
+        <div className="modal-overlay" onClick={() => setShowReasonModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>📝 Full Reason</h3>
+              <button className="modal-close" onClick={() => setShowReasonModal(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p><strong>Request ID:</strong> {pendingRequests.find(r => r.id === showReasonModal)?.id}</p>
+              <p><strong>Employee:</strong> {pendingRequests.find(r => r.id === showReasonModal)?.employeeName}</p>
+              <div className="full-reason">
+                {pendingRequests.find(r => r.id === showReasonModal)?.reason}
               </div>
             </div>
-          ))}
+            <div className="modal-footer">
+              <button onClick={() => setShowReasonModal(null)} className="modal-close-btn">Close</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

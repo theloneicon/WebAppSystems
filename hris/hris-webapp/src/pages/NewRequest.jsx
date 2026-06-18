@@ -19,7 +19,14 @@ function NewRequest({ user }) {
   const checkPendingRequests = async () => {
     const result = await api.getMyRequests(user.id);
     if (result.success) {
-      const pending = result.requests.filter(r => r.regularStatus === 'PENDING' || r.hrStatus === 'PENDING');
+      // Only consider a request as pending if:
+      // 1. Regular_Status is 'PENDING' (waiting for regular approver)
+      // 2. OR Regular_Status is 'NOTED' AND HR_Status is 'PENDING' (waiting for final approver)
+      // CANCELED, REJECT, RECALL are terminal - NOT pending
+      const pending = result.requests.filter(r => 
+        r.regularStatus === 'PENDING' || 
+        (r.regularStatus === 'NOTED' && r.hrStatus === 'PENDING')
+      );
       setHasPending(pending.length > 0);
       setPendingRequests(pending);
     }
@@ -64,7 +71,7 @@ function NewRequest({ user }) {
 
   return (
     <div className="new-request">
-      <h1>New Leave Request</h1>
+      <h2>✨ New Leave Request</h2>
       
       {hasPending && !showWarning && (
         <div className="alert alert-warning">

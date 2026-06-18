@@ -2,19 +2,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString();
-};
-
-const formatCredit = (credit, leaveRenderType) => {
-  if (leaveRenderType === 'FULL') return 'Full Day (1.0 day)';
-  if (leaveRenderType === '1ST_HALF') return '1st Half - AM (0.5 day)';
-  if (leaveRenderType === '2ND_HALF') return '2nd Half - PM (0.5 day)';
-  return `${credit || 0} day(s)`;
-};
-
 function FinalApproverDashboard({ user }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,11 +53,18 @@ function FinalApproverDashboard({ user }) {
     setComments(prev => ({ ...prev, [requestId]: value }));
   };
 
+  // Simple helper at the top of the file
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
   if (loading) return <div className="loading">Loading pending approvals...</div>;
 
   return (
-    <div className="approver-dashboard">
-      <h1>🏆 Final Approvals</h1>
+    <div className="leaves-approver-dashboard">
+      <h2>🏆 Final Approvals</h2>
       <p>Requests waiting for your final decision ({pendingRequests.length})</p>
 
       {pendingRequests.length === 0 ? (
@@ -78,66 +72,70 @@ function FinalApproverDashboard({ user }) {
           <p>✨ No pending requests for final approval</p>
         </div>
       ) : (
-        <div className="requests-list">
-          {pendingRequests.map(request => (
-            <div key={request.id} className="request-card pending">
-              <div className="request-header">
-                <span className="request-id">{request.id}</span>
-                <span className="status-badge noted">NOTED</span>
-              </div>
-              
-              <div className="request-body">
-                <div className="request-dates">
-                  <span>📅 {formatDate(request.date)}</span>
-                  <span>{formatCredit(request.credit, request.leaveRenderType)}</span>
-                </div>
-                <div className="request-reason">
-                  <strong>Employee:</strong> {request.employeeName} ({request.employeeID})
-                </div>
-                <div className="request-reason">
-                  <strong>Department:</strong> {request.deptName}
-                </div>
-                <div className="request-reason">
-                  <strong>Regular Approver:</strong> {request.regularApproverName}
-                </div>
-                <div className="request-reason">
-                  <strong>Leave Type:</strong> {request.leaveType}
-                </div>                
-                <div className="request-reason">
-                  <strong>Reason:</strong> {request.reason}
-                </div>
-                <div className="request-created">
-                  <small>Submitted: {new Date(request.createdAt).toLocaleString()}</small>
-                </div>
-                <div className="form-group">
-                  <label>Comments (optional):</label>
-                  <textarea
-                    value={comments[request.id] || ''}
-                    onChange={(e) => updateComment(request.id, e.target.value)}
-                    placeholder="Add any notes or remarks..."
-                    rows="2"
-                  />
-                </div>
-              </div>
-              
-              <div className="request-actions">
-                <button 
-                  onClick={() => handleApprove(request.id)} 
-                  className="approve-btn"
-                  disabled={processingId === request.id}
-                >
-                  {processingId === request.id ? 'Processing...' : '✅ Approve'}
-                </button>
-                <button 
-                  onClick={() => handleReject(request.id)} 
-                  className="reject-btn"
-                  disabled={processingId === request.id}
-                >
-                  {processingId === request.id ? 'Processing...' : '❌ Reject'}
-                </button>
-              </div>
-            </div>
-          ))}
+        <div className="table-container">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Employee</th>
+                <th>Department</th>
+                <th>Date Range</th>
+                <th>Days</th>
+                <th>Leave Type</th>
+                <th>Regular Approver</th>
+                <th>Reason</th>
+                <th>Submitted</th>
+                <th>Comments</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingRequests.map(request => (
+                <tr key={request.id}>
+                  <td className="request-id-cell">{request.id}</td>
+                  <td>
+                    {request.employeeName}
+                    <br />
+                    <small>{request.employeeID}</small>
+                  </td>
+                  <td>{request.deptName}</td>
+                  <td>{request.dateRange || formatDate(request.date)}</td>
+                  <td className="days-cell">{request.totalDays || 1}</td>
+                  <td>{request.leaveType}</td>
+                  <td>{request.regularApproverName}</td>
+                  <td>{request.reason}</td>
+                  <td>{new Date(request.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <textarea
+                      value={comments[request.id] || ''}
+                      onChange={(e) => updateComment(request.id, e.target.value)}
+                      placeholder="Add remarks..."
+                      rows="2"
+                      className="comment-input"
+                    />
+                  </td>
+                  <td>
+                    <div className="action-buttons">
+                      <button 
+                        onClick={() => handleApprove(request.id)} 
+                        className="action-btn approve-btn-small"
+                        disabled={processingId === request.id}
+                      >
+                        {processingId === request.id ? '...' : '✅ Approve'}
+                      </button>
+                      <button 
+                        onClick={() => handleReject(request.id)} 
+                        className="action-btn reject-btn-small"
+                        disabled={processingId === request.id}
+                      >
+                        {processingId === request.id ? '...' : '❌ Reject'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

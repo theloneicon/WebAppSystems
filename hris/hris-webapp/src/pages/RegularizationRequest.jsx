@@ -129,7 +129,7 @@ function RegularizationRequest({ user }) {
 
   return (
     <div className="regularization-page">
-      <h1>📝 Attendance Regularization</h1>
+      <h2>📝 Attendance Regularization</h2>
       <p>Request approval for missed or incorrect attendance records</p>
 
       <div className="form-container">

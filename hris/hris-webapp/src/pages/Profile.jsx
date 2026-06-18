@@ -17,7 +17,7 @@ function Profile({ user }) {
 
     try {
       // Fetch Regular Approver Name
-      if (user.regAprv) {
+      if (user.regAprv && user.regAprv !== 0) {
         const result = await api.getEmployeeByRoleId(user.regAprv);
         if (result.success) {
           setRegularApproverName(result.employee.name);
@@ -67,8 +67,9 @@ function Profile({ user }) {
     switch(user.roleCateg) {
       case 'Normal': return '👤 Normal User';
       case 'Approver05': return '👑 Regular Approver';
-      case 'Approver08': return '⭐ Final Approver';
-      case 'Approver09': return '🌟 Senior Approver';
+      case 'Approver07': return '⭐ Sr. Approver';
+      case 'Approver08': return '⭐ Sr. Approver';
+      case 'Approver09': return '🌟 CEO Approver';
       default: return user.roleCateg || 'Not specified';
     }
   };
@@ -78,6 +79,7 @@ function Profile({ user }) {
     switch(user.roleCateg) {
       case 'Normal': return 'Cannot approve any requests';
       case 'Approver05': return 'Can approve as Regular Approver only';
+      case 'Approver07': return 'Can approve as Regular Approver only';
       case 'Approver08': return 'Can approve as Regular and Final Approver';
       case 'Approver09': return 'Can approve as Final Approver (Skip approval)';
       default: return '';

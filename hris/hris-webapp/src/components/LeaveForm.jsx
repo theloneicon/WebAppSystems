@@ -160,8 +160,9 @@ function LeaveForm({ user, onSubmit }) {
     switch(user.roleCateg) {
       case 'Normal': return '👤 Normal User';
       case 'Approver05': return '👑 Regular Approver';
-      case 'Approver08': return '⭐ Final Approver';
-      case 'Approver09': return '🌟 Senior Approver';
+      case 'Approver07': return '⭐ Sr. Approver';
+      case 'Approver08': return '⭐ Sr. Approver';
+      case 'Approver09': return '🌟 CEO Approver';
       default: return user.roleCateg || 'Unknown';
     }
   };
@@ -173,18 +174,18 @@ function LeaveForm({ user, onSubmit }) {
         <div className="info-card">
           <h4>📋 Approval Routing</h4>
           <div className="info-row">
-            <span className="info-label">Your Role:</span>
+            <span className="info-label">Your Role : </span>
             <span className="info-value">{getRoleDisplay()}</span>
           </div>
           <div className="info-row">
-            <span className="info-label">Regular Approver:</span>
+            <span className="info-label">Regular Approver : </span>
             <span className="info-value">{regularApproverName || 'Not assigned'}</span>
             {isUsingAlternate && (
               <span className="info-badge">(Alternate - Regular Approver on Leave)</span>
             )}
           </div>
           <div className="info-row">
-            <span className="info-label">Final Approver:</span>
+            <span className="info-label">Final Approver :</span>
             <span className="info-value">
               {user.finalAprvName ? (
                 user.finalAprv === user.regAprv ? 

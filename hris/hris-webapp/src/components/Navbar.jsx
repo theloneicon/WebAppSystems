@@ -3,13 +3,15 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
+
 function Navbar({ user, onLogout }) {
   const location = useLocation();
   
   // Role-based access control - USING ROLE_CATEG
   const isAdmin = user?.accessLevel === 1;
-  const isRegularApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08';
+  const isRegularApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07';
   const isFinalApprover = user?.roleCateg === 'Approver08';
+  const isDeptApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07';
   
   // Check if user is allowed to file Regularization (Official Business)
   const canRegularize = user?.allowedRegzn === 1;
@@ -104,9 +106,9 @@ function Navbar({ user, onLogout }) {
 
   const getRoleName = () => {
     if (user?.accessLevel === 1) return 'Admin';
-    if (isFinalApprover) return 'Final Approver';
-    if (isRegularApprover) return 'Approver';
-    return 'User';
+    if (isFinalApprover) return 'Senior Approver';
+    if (isRegularApprover) return 'Regular Approver';
+    return 'Normal User';
   };
 
   const handleMouseEnter = (dropdown) => {
@@ -186,64 +188,29 @@ function Navbar({ user, onLogout }) {
 
       {/* Navigation Menu with Dropdowns */}
       <div className="nav-links">
-        {/* Dashboard Dropdown */}
+        {/* My Dashboard Dropdown - For Normal Users */}
         <div 
           className="dropdown"
-          onMouseEnter={() => handleMouseEnter('dashboard')}
+          onMouseEnter={() => handleMouseEnter('mydashboard')}
           onMouseLeave={handleMouseLeave}
         >
           <button className="dropdown-btn">
-            <span className="nav-icon">📊</span> Dashboard <span className="dropdown-arrow">▼</span>
+            <span className="nav-icon">👤</span> My Dashboard <span className="dropdown-arrow">▼</span>
           </button>
-          {openDropdown === 'dashboard' && (
+          {openDropdown === 'mydashboard' && (
             <div className="dropdown-content">
               <Link to="/dashboard" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">📊</span> My Leaves Status
+                <span className="nav-icon">📊</span> Leaves Record
               </Link>
               <Link to="/my-attendance" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">📅</span> My Attendance
+                <span className="nav-icon">📅</span> Attendance Record
               </Link>
-              {isAdmin && (
-                <>
-                  <Link to="/attendance" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">📊</span> Attendance
-                  </Link>
-                  <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">🔧</span> HR Acknowledgement
-                  </Link>
-                  <Link to="/admin" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">📋</span> All Leaves Status
-                  </Link>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Leaves Dropdown */}
-        <div 
-          className="dropdown"
-          onMouseEnter={() => handleMouseEnter('leaves')}
-          onMouseLeave={handleMouseLeave}
-        >
-          <button className="dropdown-btn">
-            <span className="nav-icon">📋</span> Leaves <span className="dropdown-arrow">▼</span>
-          </button>
-          {openDropdown === 'leaves' && (
-            <div className="dropdown-content">
               <Link to="/my-requests" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">📋</span> My Leaves
+                <span className="nav-icon">📋</span> Leave Requests
               </Link>
               <Link to="/new-request" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">✨</span> New Leaves
+                <span className="nav-icon">✨</span> File New Leaves
               </Link>
-              {/* Regular Approver Link - using Role_Categ */}
-              {isRegularApprover && (
-                <Link to="/approvals" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">✅</span> Leave Approvals
-                </Link>
-              )}
-              {/* Regularization Link - ONLY if Allowed_Regzn = 1 */}
               {canRegularize && (
                 <Link to="/regularization" onClick={() => setOpenDropdown(null)}>
                   <span className="nav-icon">🔄</span> Regularization
@@ -253,17 +220,69 @@ function Navbar({ user, onLogout }) {
           )}
         </div>
 
+        {/* Team Dashboard Dropdown - For Approvers (Approver05 & Approver08 & Approver07) */}
+        {isDeptApprover && (
+          <div 
+            className="dropdown"
+            onMouseEnter={() => handleMouseEnter('teamdashboard')}
+            onMouseLeave={handleMouseLeave}
+          >
+            <button className="dropdown-btn">
+              <span className="nav-icon">👥</span> Team Dashboard <span className="dropdown-arrow">▼</span>
+            </button>
+            {openDropdown === 'teamdashboard' && (
+              <div className="dropdown-content">
+                <Link to="/dept-requests" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📋</span> Team Leave Status
+                </Link>
+                <Link to="/team-attendance" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📅</span> Team Attendance
+                </Link>
+                {isRegularApprover && (
+                  <Link to="/approvals" onClick={() => setOpenDropdown(null)}>
+                    <span className="nav-icon">✅</span> Team Leave Approvals
+                  </Link>
+                )}
+                {isFinalApprover && (
+                  <Link to="/final-approvals" onClick={() => setOpenDropdown(null)}>
+                    <span className="nav-icon">🏆</span> Final Approvals
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Admin Dropdown - For Admin only */}
+        {isAdmin && (
+          <div 
+            className="dropdown"
+            onMouseEnter={() => handleMouseEnter('admin')}
+            onMouseLeave={handleMouseLeave}
+          >
+            <button className="dropdown-btn">
+              <span className="nav-icon">🔧</span> Admin <span className="dropdown-arrow">▼</span>
+            </button>
+            {openDropdown === 'admin' && (
+              <div className="dropdown-content">
+                <Link to="/daily-timekeep" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📊</span> Daily Timekeep
+                </Link>
+                <Link to="/admin" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">📋</span> All Leaves Status
+                </Link>
+                <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
+                  <span className="nav-icon">🔧</span> HR Acknowledgement
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Profile Link (no dropdown) */}
         <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
           <span className="nav-icon">👤</span> Profile
         </Link>
-        
-        {/* Final Approver Link - using Role_Categ */}
-        {isFinalApprover && (
-          <Link to="/final-approvals" className={location.pathname === '/final-approvals' ? 'active' : ''}>
-            🏆 Final Approvals
-          </Link>
-        )}
       </div>
     </nav>
   );
