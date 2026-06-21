@@ -7,7 +7,7 @@ function MyAttendance({ user }) {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [showUpcoming, setShowUpcoming] = useState(false);  // ← Toggle for UPCOMING
+  const [showUpcoming, setShowUpcoming] = useState(false);
 
   useEffect(() => {
     loadAttendanceRecords();
@@ -43,10 +43,33 @@ function MyAttendance({ user }) {
     return checkDate > today;
   };
 
+  const isWeekend = (dateString) => {
+    const date = new Date(dateString);
+    const day = date.getDay();
+    return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+  };
+
   const getStatusBadge = (record) => {
+    // Check if date is in the future
     if (isFutureDate(record.date)) {
       return <span className="status-badge-table status-upcoming">📅 UPCOMING</span>;
     }
+    
+    // Check if it's a weekend
+    if (isWeekend(record.date)) {
+      // If employee clocked in AND clocked out on weekend → COMPLETE
+      if (record.clockInTime && record.clockOutTime) {
+        return <span className="status-badge-table status-complete">✅ COMPLETE</span>;
+      }
+      // If employee clocked in but NOT clocked out on weekend → INCOMPLETE
+      if (record.clockInTime && !record.clockOutTime) {
+        return <span className="status-badge-table status-in">🕐 INCOMPLETE</span>;
+      }
+      // If no clock in on weekend → WEEKEND (rest day)
+      return <span className="status-badge-table status-weekend">📅 WEEKEND</span>;
+    }
+    
+    // Regular weekday logic
     if (record.isOnLeave) return <span className="status-badge-table status-leave">🌴 ON LEAVE</span>;
     if (!record.clockInTime) return <span className="status-badge-table status-absent">❌ ABSENT</span>;
     if (record.clockInTime && !record.clockOutTime) return <span className="status-badge-table status-in">🕐 INCOMPLETE</span>;
@@ -82,14 +105,19 @@ function MyAttendance({ user }) {
 
   const futureCount = attendanceRecords.filter(record => isFutureDate(record.date)).length;
 
-  // Calculate summary
-  const totalDays = pastRecords.length;
-  const presentDays = pastRecords.filter(r => r.clockInTime).length;
-  const absentDays = pastRecords.filter(r => !r.clockInTime && !r.isOnLeave).length;
-  const leaveDays = pastRecords.filter(r => r.isOnLeave).length;
-  const lateDays = pastRecords.filter(r => r.tardinessMinutes > 0 && !r.isTardyExcused).length;
-  const totalTardiness = pastRecords.reduce((sum, r) => sum + (r.tardinessMinutes || 0), 0);
-  const totalUndertime = pastRecords.reduce((sum, r) => sum + (r.undertimeMinutes || 0), 0);
+  // Calculate summary (excluding weekends and future dates)
+  const weekdaysOnly = pastRecords.filter(r => !isWeekend(r.date));
+  const totalDays = weekdaysOnly.length;
+  const presentDays = weekdaysOnly.filter(r => r.clockInTime).length;
+  const absentDays = weekdaysOnly.filter(r => !r.clockInTime && !r.isOnLeave).length;
+  const leaveDays = weekdaysOnly.filter(r => r.isOnLeave).length;
+  const lateDays = weekdaysOnly.filter(r => r.tardinessMinutes > 0 && !r.isTardyExcused).length;
+  const totalTardiness = weekdaysOnly.reduce((sum, r) => sum + (r.tardinessMinutes || 0), 0);
+  const totalUndertime = weekdaysOnly.reduce((sum, r) => sum + (r.undertimeMinutes || 0), 0);
+
+  // Count weekends
+  const weekendCount = pastRecords.filter(r => isWeekend(r.date)).length;
+  const weekendWorked = pastRecords.filter(r => isWeekend(r.date) && r.clockInTime && r.clockOutTime).length;
 
   if (loading) return <div className="loading">Loading attendance records...</div>;
 
@@ -99,6 +127,7 @@ function MyAttendance({ user }) {
       <div className='my-attendance-desc-page'>
         View your daily attendance records
       </div>
+
       <div className="attendance-controls">
         <div className="attendance-filters">
           <div className="filter-group">
@@ -157,6 +186,18 @@ function MyAttendance({ user }) {
         </div>
       </div>
 
+      {/* Weekend Summary */}
+      <div className="weekend-summary">
+        <div className="weekend-card">
+          <span className="weekend-label">📅 Weekends this month:</span>
+          <span className="weekend-value">{weekendCount} days</span>
+        </div>
+        <div className="weekend-card worked">
+          <span className="weekend-label">✅ Weekend days worked:</span>
+          <span className="weekend-value">{weekendWorked} days</span>
+        </div>
+      </div>
+
       {/* Tardiness & Undertime Summary */}
       <div className="violation-summary">
         <div className="violation-card">
@@ -182,7 +223,9 @@ function MyAttendance({ user }) {
           <thead>
             <tr>
               <th>Date</th>
+              <th>Day</th>
               <th>Schedule</th>
+              <th>Shift</th>
               <th>Clock In</th>
               <th>Clock Out</th>
               <th>Status</th>
@@ -193,24 +236,31 @@ function MyAttendance({ user }) {
           <tbody>
             {filteredRecords.length === 0 ? (
               <tr>
-                <td colSpan="7" className="empty-table">No attendance records found</td>
+                <td colSpan="9" className="empty-table">No attendance records found</td>
               </tr>
             ) : (
-              filteredRecords.map((record, idx) => (
-                <tr key={idx} className={isFutureDate(record.date) ? 'future-row' : ''}>
-                  <td className={isFutureDate(record.date) ? 'future-date' : ''}>{record.date}</td>
-                  <td>{record.schedArrangement || '-'}</td>
-                  <td>{formatTime(record.clockInTime)}</td>
-                  <td>{formatTime(record.clockOutTime)}</td>
-                  <td>{getStatusBadge(record)}</td>
-                  <td className={record.tardinessMinutes > 0 && !record.isTardyExcused && !isFutureDate(record.date) ? 'violation-cell' : ''}>
-                    {record.tardinessMinutes > 0 && !isFutureDate(record.date) ? `${record.tardinessMinutes} min` : '-'}
-                  </td>
-                  <td className={record.undertimeMinutes > 0 && !record.isUndertimeExcused && !isFutureDate(record.date) ? 'violation-cell' : ''}>
-                    {record.undertimeMinutes > 0 && !isFutureDate(record.date) ? `${record.undertimeMinutes} min` : '-'}
-                  </td>
-                </tr>
-              ))
+              filteredRecords.map((record, idx) => {
+                const isWeekendDay = isWeekend(record.date);
+                const dayName = new Date(record.date).toLocaleDateString('en-US', { weekday: 'short' });
+                const shiftType = record.isNightShift ? '🌙 Night' : '☀️ Day';
+                return (
+                  <tr key={idx} className={isFutureDate(record.date) ? 'future-row' : ''}>
+                    <td className={isFutureDate(record.date) ? 'future-date' : ''}>{record.date}</td>
+                    <td className={isWeekendDay ? 'weekend-day' : ''}>{dayName}</td>
+                    <td>{record.schedArrangement || '-'}</td>
+                    <td className="shift-cell">{shiftType}</td>
+                    <td>{formatTime(record.clockInTime)}</td>
+                    <td>{formatTime(record.clockOutTime)}</td>
+                    <td>{getStatusBadge(record)}</td>
+                    <td className={record.tardinessMinutes > 0 && !record.isTardyExcused && !isFutureDate(record.date) ? 'violation-cell' : ''}>
+                      {record.tardinessMinutes > 0 && !isFutureDate(record.date) ? `${record.tardinessMinutes} min` : '-'}
+                    </td>
+                    <td className={record.undertimeMinutes > 0 && !record.isUndertimeExcused && !isFutureDate(record.date) ? 'violation-cell' : ''}>
+                      {record.undertimeMinutes > 0 && !isFutureDate(record.date) ? `${record.undertimeMinutes} min` : '-'}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

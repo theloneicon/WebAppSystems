@@ -8,6 +8,7 @@ function HRDailyTimeKeep({ user }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [departments, setDepartments] = useState([]);
   const [summary, setSummary] = useState({
     total: 0,
@@ -15,7 +16,9 @@ function HRDailyTimeKeep({ user }) {
     clockedOut: 0,
     onLeave: 0,
     notClockedIn: 0,
-    incomplete: 0
+    incomplete: 0,
+    late: 0,
+    undertime: 0
   });
 
   useEffect(() => {
@@ -32,15 +35,17 @@ function HRDailyTimeKeep({ user }) {
       const depts = [...new Set(result.records.map(r => r.deptName))];
       setDepartments(depts);
       
-      // Calculate summary - Focus on CLOCK IN / CLOCK OUT
+      // Calculate summary
       const total = result.records.length;
       const clockedIn = result.records.filter(r => r.clockInTime).length;
       const clockedOut = result.records.filter(r => r.clockInTime && r.clockOutTime).length;
       const onLeave = result.records.filter(r => r.isOnLeave).length;
       const notClockedIn = result.records.filter(r => !r.clockInTime && !r.isOnLeave).length;
       const incomplete = result.records.filter(r => r.clockInTime && !r.clockOutTime).length;
+      const late = result.records.filter(r => r.tardinessMinutes > 0 && !r.isTardyExcused).length;
+      const undertime = result.records.filter(r => r.undertimeMinutes > 0 && !r.isUndertimeExcused).length;
       
-      setSummary({ total, clockedIn, clockedOut, onLeave, notClockedIn, incomplete });
+      setSummary({ total, clockedIn, clockedOut, onLeave, notClockedIn, incomplete, late, undertime });
     }
     setLoading(false);
   };
@@ -80,6 +85,9 @@ function HRDailyTimeKeep({ user }) {
     if (record.tardinessMinutes > 0 && !record.isTardyExcused) {
       return { text: 'LATE', class: 'status-late', icon: '⚠️' };
     }
+    if (record.undertimeMinutes > 0 && !record.isUndertimeExcused) {
+      return { text: 'UNDERTIME', class: 'status-undertime', icon: '⏳' };
+    }
     return { text: 'COMPLETE', class: 'status-complete', icon: '✅' };
   };
 
@@ -104,6 +112,10 @@ function HRDailyTimeKeep({ user }) {
     if (departmentFilter !== 'ALL' && record.deptName !== departmentFilter) {
       return false;
     }
+    if (statusFilter !== 'ALL') {
+      const status = getStatusBadge(record).text;
+      if (status !== statusFilter) return false;
+    }
     return true;
   });
 
@@ -115,10 +127,10 @@ function HRDailyTimeKeep({ user }) {
 
   return (
     <div className="attendance-dashboard-modern">
-      
+      <div className="dashboard-header">
         <h2>📊 Daily Timekeep</h2>
         <p className="subtitle">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-      
+      </div>
 
       {/* Date Selector */}
       <div className="date-controls">
@@ -140,46 +152,66 @@ function HRDailyTimeKeep({ user }) {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `attendance_${selectedDate}.csv`;
+          a.download = `daily_timekeep_${selectedDate}.csv`;
           a.click();
         }}>
           📎 Export CSV
         </button>
       </div>
 
-      {/* Summary Cards - Focus on Clock In/Out */}
+      {/* Summary Cards */}
       <div className="summary-grid">
         <div className="summary-card-modern total">
+          <div className="card-icon">👥</div>
           <div className="card-info">
             <h3>{summary.total}</h3>
             <p>Total Employees</p>
           </div>
         </div>
         <div className="summary-card-modern clockedin">
+          <div className="card-icon">⬆️</div>
           <div className="card-info">
             <h3>{summary.clockedIn}</h3>
             <p>Clocked In</p>
           </div>
         </div>
         <div className="summary-card-modern clockedout">
+          <div className="card-icon">✅</div>
           <div className="card-info">
             <h3>{summary.clockedOut}</h3>
             <p>Clocked Out</p>
           </div>
         </div>
         <div className="summary-card-modern notclockedin">
+          <div className="card-icon">⏳</div>
           <div className="card-info">
             <h3>{summary.notClockedIn}</h3>
             <p>Not Clocked In</p>
           </div>
         </div>
         <div className="summary-card-modern incomplete">
+          <div className="card-icon">🕐</div>
           <div className="card-info">
             <h3>{summary.incomplete}</h3>
             <p>Incomplete</p>
           </div>
         </div>
+        <div className="summary-card-modern late">
+          <div className="card-icon">⚠️</div>
+          <div className="card-info">
+            <h3>{summary.late}</h3>
+            <p>Late</p>
+          </div>
+        </div>
+        <div className="summary-card-modern undertime">
+          <div className="card-icon">⏳</div>
+          <div className="card-info">
+            <h3>{summary.undertime}</h3>
+            <p>Undertime</p>
+          </div>
+        </div>
         <div className="summary-card-modern leave">
+          <div className="card-icon">🌴</div>
           <div className="card-info">
             <h3>{summary.onLeave}</h3>
             <p>On Leave</p>
@@ -203,6 +235,15 @@ function HRDailyTimeKeep({ user }) {
             <option key={dept} value={dept}>{dept} ({attendance.filter(r => r.deptName === dept).length})</option>
           ))}
         </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="ALL">All Status</option>
+          <option value="COMPLETE">✅ Complete ({getStatusCount('COMPLETE')})</option>
+          <option value="NOT CLOCKED IN">⏳ Not Clocked In ({getStatusCount('NOT CLOCKED IN')})</option>
+          <option value="LATE">⚠️ Late ({getStatusCount('LATE')})</option>
+          <option value="UNDERTIME">⏳ Undertime ({getStatusCount('UNDERTIME')})</option>
+          <option value="INCOMPLETE">🕐 Incomplete ({getStatusCount('INCOMPLETE')})</option>
+          <option value="ON LEAVE">🌴 On Leave ({getStatusCount('ON LEAVE')})</option>
+        </select>
         <div className="summary-badge">
           <span className="badge-clockedin">⬆️ {summary.clockedIn} In</span>
           <span className="badge-clockout">✅ {summary.clockedOut} Out</span>
@@ -217,6 +258,7 @@ function HRDailyTimeKeep({ user }) {
               <th>Employee</th>
               <th>Department</th>
               <th>Schedule</th>
+              <th>Shift</th>
               <th>Clock In</th>
               <th>Clock Out</th>
               <th>Status</th>
@@ -228,7 +270,7 @@ function HRDailyTimeKeep({ user }) {
           <tbody>
             {filteredAttendance.length === 0 ? (
               <tr className="empty-row">
-                <td colSpan="9">
+                <td colSpan="10">
                   <div className="empty-state">
                     <span>📭</span>
                     <p>No attendance records found</p>
@@ -238,6 +280,7 @@ function HRDailyTimeKeep({ user }) {
             ) : (
               filteredAttendance.map(record => {
                 const status = getStatusBadge(record);
+                const shiftType = record.isNightShift ? '🌙 Night' : '☀️ Day';
                 return (
                   <tr key={record.employeeId} className={status.text === 'NOT CLOCKED IN' ? 'absent-row' : ''}>
                     <td className="employee-cell">
@@ -249,6 +292,7 @@ function HRDailyTimeKeep({ user }) {
                       <span className="schedule-type">{record.schedArrangement}</span>
                       <span className="schedule-time">{formatDisplayTime(record.scheduleStart)} - {formatDisplayTime(record.scheduleEnd)}</span>
                     </td>
+                    <td className="shift-cell">{shiftType}</td>
                     <td className="time-cell">{formatDisplayTime(record.clockInTime)}</td>
                     <td className="time-cell">{formatDisplayTime(record.clockOutTime)}</td>
                     <td>
