@@ -18,8 +18,8 @@ import DeptLeaveDashboard from '../pages/DeptLeaveDashboard';
 
 function AppRoutes({ user }) {
   // Use Role_Categ to determine approval rights
-  const isRegularApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07' ;
-  const isFinalApprover = user?.roleCateg === 'Approver08';
+  const isRegularApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07';
+  const isFinalApprover = user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver09';
   const isDeptApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07';
   const isAdmin = user?.accessLevel === 1;
 

@@ -94,13 +94,13 @@ function HRDailyTimeKeep({ user }) {
   const calculateTardyDisplay = (record) => {
     if (!record.tardinessMinutes || record.tardinessMinutes === 0) return '-';
     if (record.isTardyExcused) return `${record.tardinessMinutes} min (Excused)`;
-    return `${record.tardinessMinutes} min`;
+    return `${formatMinutes(record.tardinessMinutes)}`;
   };
 
   const calculateUndertimeDisplay = (record) => {
     if (!record.undertimeMinutes || record.undertimeMinutes === 0) return '-';
     if (record.isUndertimeExcused) return `${record.undertimeMinutes} min (Excused)`;
-    return `${record.undertimeMinutes} min`;
+    return `${formatMinutes(record.undertimeMinutes)}`;
   };
 
   // Apply filters
@@ -122,6 +122,12 @@ function HRDailyTimeKeep({ user }) {
   const getStatusCount = (statusText) => {
     return attendance.filter(r => getStatusBadge(r).text === statusText).length;
   };
+
+  const formatMinutes = (minutes) => {
+  if (!minutes || minutes === 0) return '-';
+  const formatted = parseFloat(minutes.toFixed(2));
+  return `${formatted} min`;
+  }; 
 
   if (loading) return <div className="loading">Loading attendance...</div>;
 
@@ -169,14 +175,14 @@ function HRDailyTimeKeep({ user }) {
           </div>
         </div>
         <div className="summary-card-modern clockedin">
-          <div className="card-icon">⬆️</div>
+          <div className="card-icon">🟢</div>
           <div className="card-info">
             <h3>{summary.clockedIn}</h3>
             <p>Clocked In</p>
           </div>
         </div>
         <div className="summary-card-modern clockedout">
-          <div className="card-icon">✅</div>
+          <div className="card-icon">🟠</div>
           <div className="card-info">
             <h3>{summary.clockedOut}</h3>
             <p>Clocked Out</p>
@@ -245,8 +251,8 @@ function HRDailyTimeKeep({ user }) {
           <option value="ON LEAVE">🌴 On Leave ({getStatusCount('ON LEAVE')})</option>
         </select>
         <div className="summary-badge">
-          <span className="badge-clockedin">⬆️ {summary.clockedIn} In</span>
-          <span className="badge-clockout">✅ {summary.clockedOut} Out</span>
+          <span className="badge-clockedin">🟢 {summary.clockedIn} In</span>
+          <span className="badge-clockout">🟠 {summary.clockedOut} Out</span>
         </div>
       </div>
 

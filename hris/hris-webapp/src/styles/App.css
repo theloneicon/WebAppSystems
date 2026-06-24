@@ -709,7 +709,7 @@ button:disabled {
 
 .admin-table th {
   text-align: center;
-  padding: .2rem;
+  padding: .0rem;
   background: #f9fafb;
   font-weight: 600;
   color: #374151;
@@ -723,7 +723,7 @@ button:disabled {
 }
 
 .admin-table td {
-  padding: 0.50rem .5rem;
+  padding: 0.0rem .5rem;
   border-bottom: 1px solid #f3f4f6;
   color: #4b5563;
 }
@@ -813,6 +813,11 @@ button:disabled {
   color: #4338ca;
 }
 
+.status-badge-table.status-undertime {
+  background: #cbf4c9;
+  color: #8000ff;
+}
+
 .alert-info {
   background: #dbeafe;
   border: 1px solid #bfdbfe;
@@ -842,7 +847,7 @@ button:disabled {
 
 .summary-card {
   background: white;
-  padding: 1rem;
+  padding: .5rem;
   border-radius: 12px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -1141,7 +1146,7 @@ button:disabled {
 
 .attendance-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(10px, 1fr));
   gap: 1rem;
   margin: 1.5rem 0;
 }
@@ -2488,4 +2493,279 @@ button:disabled {
   font-size: 0.75rem;
   font-weight: 500;
   color: #166534;
+}
+
+/* Week Summary Table */
+.week-summary-table-container {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.week-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.week-summary-table th {
+  text-align: center;
+  padding: 0.1rem 0.5rem;
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 2px solid #e2e8f0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.week-summary-table td {
+  text-align: center;
+  padding: 0.1rem 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  transition: background-color 0.2s;
+}
+
+.week-summary-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.week-summary-row:hover {
+  background-color: #f8fafc;
+}
+
+.week-summary-row.active {
+  background-color: #e0e7ff;
+  border-left: 3px solid #667eea;
+}
+
+.week-summary-row.active td:first-child {
+  border-left: 3px solid #667eea;
+}
+
+.week-label {
+  font-weight: 600;
+  color: #1e293b;
+  text-align: left;
+  padding-left: 1rem;
+}
+
+.week-total-cell {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Color coding for stats */
+.week-summary-table .complete-cell { color: #22c55e; font-weight: 500; }
+.week-summary-table .absent-cell { color: #ef4444; font-weight: 600; }
+.week-summary-table .late-cell { color: #eab308; font-weight: 600; }
+.week-summary-table .leave-cell { color: #8b5cf6; font-weight: 600; }
+.week-summary-table .incomplete-cell { color: #f59e0b; font-weight: 600; }
+.week-summary-table .weekend-cell { color: #4338ca; font-weight: 600; }
+.week-summary-table .undertime-cell { color: #92400e; font-weight: 600; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .week-summary-table {
+    font-size: 0.7rem;
+  }
+  
+  .week-summary-table th,
+  .week-summary-table td {
+    padding: 0.4rem 0.25rem;
+  }
+  
+  .week-label {
+    padding-left: 0.5rem;
+  }
+}
+
+
+/* Add to src/styles/App.css */
+
+.clock-status.loading {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.clock-status.clocked-in {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.clock-status.clocked-in strong {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.clock-status.completed {
+  color: #6b7280;
+}
+
+.clock-status.on-leave {
+  color: #eab308;
+  font-weight: 500;
+}
+
+.clock-nav-btn {
+  padding: 0.4rem 1rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clock-nav-btn.clock-in {
+  background-color: #22c55e;
+  color: white;
+}
+
+.clock-nav-btn.clock-in:hover:not(:disabled) {
+  background-color: #16a34a;
+}
+
+.clock-nav-btn.clock-in:disabled {
+  background-color: #86efac;
+  cursor: not-allowed;
+}
+
+.clock-nav-btn.clock-out {
+  background-color: #ef4444;
+  color: white;
+}
+
+.clock-nav-btn.clock-out:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.clock-nav-btn.clock-out.disabled,
+.clock-nav-btn.clock-out:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.clock-nav-btn.clock-out.disabled:hover,
+.clock-nav-btn.clock-out:disabled:hover {
+  background-color: #9ca3af;
+  transform: none;
+}
+
+/* Search Input Styles */
+.search-group {
+  min-width: 200px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+}
+
+.search-clear-btn:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* Search Results Info */
+.search-results-info {
+  padding: 0.5rem 1rem;
+  margin: 0.5rem 0 1rem 0;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.search-results-info strong {
+  color: #1e293b;
+}
+
+.search-results-info .no-results {
+  color: #ef4444;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .search-group {
+    min-width: 100%;
+  }
+  
+  .search-input-wrapper {
+    width: 100%;
+  }
+}
+
+/* Profile - Shift Display */
+.shift-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shift-icon {
+  font-size: 1.2rem;
+}
+
+.shift-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.shift-badge.day {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.shift-badge.night {
+  background: #e0e7ff;
+  color: #4338ca;
+  border: 1px solid #93c5fd;
+}
+
+/* Detail row - make it more compact for shift info */
+.detail-row .shift-display {
+  flex-wrap: wrap;
 }

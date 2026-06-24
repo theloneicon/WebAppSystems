@@ -8,6 +8,7 @@ function MyAttendance({ user }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showUpcoming, setShowUpcoming] = useState(false);
+  const [showWeekend, setShowWeekend] = useState(false); // ← NEW
 
   useEffect(() => {
     loadAttendanceRecords();
@@ -76,12 +77,21 @@ function MyAttendance({ user }) {
     return <span className="status-badge-table status-complete">✅ COMPLETE</span>;
   };
 
-  // Get filtered records based on toggle
+  // Get filtered records based on toggles
   const getFilteredRecords = () => {
-    if (showUpcoming) {
-      return attendanceRecords;
+    let result = [...attendanceRecords];
+    
+    // Upcoming filter
+    if (!showUpcoming) {
+      result = result.filter(record => !isFutureDate(record.date));
     }
-    return attendanceRecords.filter(record => !isFutureDate(record.date));
+    
+    // Weekend filter
+    if (!showWeekend) {
+      result = result.filter(record => !isWeekend(record.date));
+    }
+    
+    return result;
   };
 
   const filteredRecords = getFilteredRecords();
@@ -103,7 +113,14 @@ function MyAttendance({ user }) {
     return recordDate <= currentDate;
   });
 
+  const formatMinutes = (minutes) => {
+    if (!minutes || minutes === 0) return '-';
+    const formatted = parseFloat(minutes.toFixed(2));
+    return `${formatted} min`;
+  };  
+
   const futureCount = attendanceRecords.filter(record => isFutureDate(record.date)).length;
+  const weekendCount = attendanceRecords.filter(record => isWeekend(record.date)).length;
 
   // Calculate summary (excluding weekends and future dates)
   const weekdaysOnly = pastRecords.filter(r => !isWeekend(r.date));
@@ -115,8 +132,7 @@ function MyAttendance({ user }) {
   const totalTardiness = weekdaysOnly.reduce((sum, r) => sum + (r.tardinessMinutes || 0), 0);
   const totalUndertime = weekdaysOnly.reduce((sum, r) => sum + (r.undertimeMinutes || 0), 0);
 
-  // Count weekends
-  const weekendCount = pastRecords.filter(r => isWeekend(r.date)).length;
+  // Count weekends worked
   const weekendWorked = pastRecords.filter(r => isWeekend(r.date) && r.clockInTime && r.clockOutTime).length;
 
   if (loading) return <div className="loading">Loading attendance records...</div>;
@@ -149,7 +165,7 @@ function MyAttendance({ user }) {
           <button onClick={loadAttendanceRecords} className="refresh-btn">Refresh</button>
         </div>
 
-        {/* Toggle for UPCOMING */}
+        {/* Toggles */}
         <div className="toggle-controls">
           <label className="toggle-label">
             <input
@@ -158,6 +174,14 @@ function MyAttendance({ user }) {
               onChange={() => setShowUpcoming(!showUpcoming)}
             />
             Show UPCOMING ({futureCount})
+          </label>
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={showWeekend}
+              onChange={() => setShowWeekend(!showWeekend)}
+            />
+            Show WEEKENDS ({weekendCount})
           </label>
         </div>
       </div>
@@ -202,11 +226,11 @@ function MyAttendance({ user }) {
       <div className="violation-summary">
         <div className="violation-card">
           <span className="violation-label">Total Tardiness:</span>
-          <span className="violation-value">{totalTardiness} minutes</span>
+          <span className="violation-value">{formatMinutes(totalTardiness)}</span>
         </div>
         <div className="violation-card">
           <span className="violation-label">Total Undertime:</span>
-          <span className="violation-value">{totalUndertime} minutes</span>
+          <span className="violation-value">{formatMinutes(totalUndertime)}</span>
         </div>
       </div>
 
@@ -253,10 +277,10 @@ function MyAttendance({ user }) {
                     <td>{formatTime(record.clockOutTime)}</td>
                     <td>{getStatusBadge(record)}</td>
                     <td className={record.tardinessMinutes > 0 && !record.isTardyExcused && !isFutureDate(record.date) ? 'violation-cell' : ''}>
-                      {record.tardinessMinutes > 0 && !isFutureDate(record.date) ? `${record.tardinessMinutes} min` : '-'}
+                      {record.tardinessMinutes > 0 && !isFutureDate(record.date) ? `${formatMinutes(record.tardinessMinutes)}` : '-'}
                     </td>
                     <td className={record.undertimeMinutes > 0 && !record.isUndertimeExcused && !isFutureDate(record.date) ? 'violation-cell' : ''}>
-                      {record.undertimeMinutes > 0 && !isFutureDate(record.date) ? `${record.undertimeMinutes} min` : '-'}
+                      {record.undertimeMinutes > 0 && !isFutureDate(record.date) ? `${formatMinutes(record.undertimeMinutes)}` : '-'}
                     </td>
                   </tr>
                 );

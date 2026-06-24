@@ -12,6 +12,7 @@ function HRAllAttendance({ user }) {
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [weekFilter, setWeekFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [searchTerm, setSearchTerm] = useState(''); // ⭐ NEW: Search state
   const [departments, setDepartments] = useState([]);
 
   useEffect(() => {
@@ -98,9 +99,36 @@ function HRAllAttendance({ user }) {
     return weekNum;
   };
 
+  // ⭐ NEW: Check if record matches search term
+  const matchesSearch = (record) => {
+    if (!searchTerm || searchTerm.trim() === '') return true;
+    
+    const term = searchTerm.toLowerCase().trim();
+    
+    // Search in multiple fields
+    const searchableFields = [
+      record.employeeName || '',
+      record.employeeId || '',
+      record.deptName || '',
+      record.schedArrangement || '',
+      record.date || '',
+      record.clockInTime || '',
+      record.clockOutTime || '',
+    ];
+    
+    return searchableFields.some(field => 
+      field.toLowerCase().includes(term)
+    );
+  };
+
   // Get filtered records based on all filters
   const getFilteredRecords = () => {
     let result = [...attendanceRecords];
+    
+    // ⭐ Search filter
+    if (searchTerm && searchTerm.trim() !== '') {
+      result = result.filter(record => matchesSearch(record));
+    }
     
     // Department filter
     if (departmentFilter !== 'ALL') {
@@ -194,6 +222,7 @@ function HRAllAttendance({ user }) {
     const status = getStatusBadge(r).text;
     return status === 'WEEKEND';
   }).length;
+
   const totalTardiness = pastRecords.reduce((sum, r) => sum + (r.tardinessMinutes || 0), 0);
   const totalUndertime = pastRecords.reduce((sum, r) => sum + (r.undertimeMinutes || 0), 0);
 
@@ -249,6 +278,17 @@ function HRAllAttendance({ user }) {
     return attendanceRecords.filter(r => getStatusBadge(r).text === status).length;
   };
 
+  const formatMinutes = (minutes) => {
+    if (!minutes || minutes === 0) return '-';
+    const formatted = parseFloat(minutes.toFixed(2));
+    return `${formatted} min`;
+  };
+
+  // ⭐ NEW: Clear search
+  const clearSearch = () => {
+    setSearchTerm('');
+  };
+
   if (loading) return <div className="loading">Loading attendance records...</div>;
 
   return (
@@ -295,6 +335,28 @@ function HRAllAttendance({ user }) {
               ))}
             </select>
           </div>
+          {/* ⭐ NEW: Search Box */}
+          <div className="filter-group search-group">
+            <label>🔍 Search:</label>
+            <div className="search-input-wrapper">
+              <input
+                type="text"
+                placeholder="Search employee, ID, dept..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+              {searchTerm && (
+                <button 
+                  onClick={clearSearch} 
+                  className="search-clear-btn"
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
           <button onClick={loadAllAttendance} className="refresh-btn">Refresh</button>
         </div>
 
@@ -318,73 +380,15 @@ function HRAllAttendance({ user }) {
         </div>
       </div>
 
-      {/* Week Summary Cards */}
-      <div className="week-summary-grid">
-        <div 
-          className={`week-summary-card ${weekFilter === 'ALL' ? 'active' : ''}`}
-          onClick={() => setWeekFilter('ALL')}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className="week-header">
-            <h4>All Weeks</h4>
-            <span className="week-total">{attendanceRecords.length} records</span>
-          </div>
-          <div className="week-stats">
-            <div className="week-stat complete">
-              <span className="stat-value">{attendanceRecords.filter(r => getStatusBadge(r).text === 'COMPLETE').length}</span>
-              <span className="stat-label">✅</span>
-            </div>
-            <div className="week-stat absent">
-              <span className="stat-value">{attendanceRecords.filter(r => getStatusBadge(r).text === 'ABSENT').length}</span>
-              <span className="stat-label">❌</span>
-            </div>
-            <div className="week-stat late">
-              <span className="stat-value">{attendanceRecords.filter(r => getStatusBadge(r).text === 'LATE').length}</span>
-              <span className="stat-label">⚠️</span>
-            </div>
-            <div className="week-stat leave">
-              <span className="stat-value">{attendanceRecords.filter(r => getStatusBadge(r).text === 'ON LEAVE').length}</span>
-              <span className="stat-label">🌴</span>
-            </div>
-          </div>
+      {/* ⭐ NEW: Search results count */}
+      {searchTerm && (
+        <div className="search-results-info">
+          Found <strong>{filteredRecords.length}</strong> record(s) for "{searchTerm}"
+          {filteredRecords.length === 0 && (
+            <span className="no-results"> - No matches found</span>
+          )}
         </div>
-
-        {['1', '2', '3', '4', '5'].map(week => {
-          const summary = getWeekSummary(attendanceRecords, week);
-          if (summary.total === 0) return null;
-          return (
-            <div 
-              key={week} 
-              className={`week-summary-card ${weekFilter === week ? 'active' : ''}`}
-              onClick={() => setWeekFilter(week)}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="week-header">
-                <h4>Week {week}</h4>
-                <span className="week-total">{summary.total} records</span>
-              </div>
-              <div className="week-stats">
-                <div className="week-stat complete">
-                  <span className="stat-value">{summary.complete}</span>
-                  <span className="stat-label">✅</span>
-                </div>
-                <div className="week-stat absent">
-                  <span className="stat-value">{summary.absent}</span>
-                  <span className="stat-label">❌</span>
-                </div>
-                <div className="week-stat late">
-                  <span className="stat-value">{summary.late}</span>
-                  <span className="stat-label">⚠️</span>
-                </div>
-                <div className="week-stat leave">
-                  <span className="stat-value">{summary.onLeave}</span>
-                  <span className="stat-label">🌴</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      )}
 
       {/* Summary Cards */}
       <div className="attendance-summary">
@@ -437,13 +441,45 @@ function HRAllAttendance({ user }) {
             <small className="filter-hint">Week {weekFilter}</small>
           )}
         </div>
-        <div className="summary-card weekend">
-          <h3>📅 Weekend</h3>
-          <p className="summary-number">{weekendDays}</p>
-          {weekFilter !== 'ALL' && (
-            <small className="filter-hint">Week {weekFilter}</small>
-          )}
-        </div>
+      </div>
+
+      {/* Week Summary Table */}
+      <div className="week-summary-table-container">
+        <table className="week-summary-table">
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>✅ Complete</th>
+              <th>❌ Absent</th>
+              <th>⚠️ Late</th>
+              <th>🌴 On Leave</th>
+              <th>🕐 Incomplete</th>
+              <th>⏳ Undertime</th>
+            </tr>
+          </thead>
+          <tbody>
+            {['1', '2', '3', '4', '5'].map(week => {
+              const summary = getWeekSummary(attendanceRecords, week);
+              if (summary.total === 0) return null;
+              return (
+                <tr 
+                  key={week} 
+                  className={`week-summary-row ${weekFilter === week ? 'active' : ''}`}
+                  onClick={() => setWeekFilter(week)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <td className="week-label">Week {week}</td>
+                  <td className="complete-cell">{summary.complete}</td>
+                  <td className="absent-cell">{summary.absent}</td>
+                  <td className="late-cell">{summary.late}</td>
+                  <td className="leave-cell">{summary.onLeave}</td>
+                  <td className="incomplete-cell">{summary.incomplete}</td>
+                  <td className="undertime-cell">{summary.undertime || 0}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {/* Department Summary */}
@@ -461,7 +497,6 @@ function HRAllAttendance({ user }) {
                 <th>🕐 Incomplete</th>
                 <th>⚠️ Late</th>
                 <th>⏳ Undertime</th>
-                <th>📅 Weekend</th>
                 <th>Attendance Rate</th>
               </tr>
             </thead>
@@ -481,7 +516,6 @@ function HRAllAttendance({ user }) {
                     <td className="incomplete-cell">{data.incomplete}</td>
                     <td className="late-cell">{data.late}</td>
                     <td className="undertime-cell">{data.undertime}</td>
-                    <td className="weekend-cell">{data.weekend}</td>
                     <td>
                       {data.total > 0 ? Math.round((data.complete / (data.total - data.weekend)) * 100) : 0}%
                     </td>
@@ -497,11 +531,11 @@ function HRAllAttendance({ user }) {
       <div className="violation-summary">
         <div className="violation-card">
           <span className="violation-label">Total Tardiness:</span>
-          <span className="violation-value">{totalTardiness} minutes</span>
+          <span className="violation-value">{formatMinutes(totalTardiness)} </span>
         </div>
         <div className="violation-card">
           <span className="violation-label">Total Undertime:</span>
-          <span className="violation-value">{totalUndertime} minutes</span>
+          <span className="violation-value">{formatMinutes(totalUndertime)} </span>
         </div>
       </div>
 
@@ -533,7 +567,9 @@ function HRAllAttendance({ user }) {
           <tbody>
             {filteredRecords.length === 0 ? (
               <tr>
-                <td colSpan="11" className="empty-table">No attendance records found</td>
+                <td colSpan="11" className="empty-table">
+                  {searchTerm ? 'No records match your search' : 'No attendance records found'}
+                </td>
               </tr>
             ) : (
               filteredRecords.map((record, idx) => {
@@ -562,10 +598,10 @@ function HRAllAttendance({ user }) {
                       </span>
                     </td>
                     <td className={record.tardinessMinutes > 0 && !record.isTardyExcused && !isFutureDate(displayDate) ? 'violation-cell' : ''}>
-                      {record.tardinessMinutes > 0 && !isFutureDate(displayDate) ? `${record.tardinessMinutes} min` : '-'}
+                      {record.tardinessMinutes > 0 && !isFutureDate(displayDate) ? `${formatMinutes(record.tardinessMinutes)}` : '-'}
                     </td>
                     <td className={record.undertimeMinutes > 0 && !record.isUndertimeExcused && !isFutureDate(displayDate) ? 'violation-cell' : ''}>
-                      {record.undertimeMinutes > 0 && !isFutureDate(displayDate) ? `${record.undertimeMinutes} min` : '-'}
+                      {record.undertimeMinutes > 0 && !isFutureDate(displayDate) ? `${formatMinutes(record.undertimeMinutes)}` : '-'}
                     </td>
                   </tr>
                 );

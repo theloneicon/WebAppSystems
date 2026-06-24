@@ -204,21 +204,21 @@ export const api = {
     return response.json();
   },
 
-  clockIn: async (employeeID, employeeName, schedArrangement, locationGPS, scheduleStart) => {
-    const now = new Date();
-    const logDate = formatDate(now);
-    const logTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    const device = getDeviceInfo();
-    const ipAddress = await getIPAddress();
-    
-    console.log('Clock In params:', { employeeID, employeeName, schedArrangement, logDate, logTime });
-    
-    const response = await fetch(
-      `${API_BASE}?endpoint=clockIn&employeeID=${encodeURIComponent(employeeID)}&employeeName=${encodeURIComponent(employeeName)}&schedArrangement=${encodeURIComponent(schedArrangement)}&logDate=${encodeURIComponent(logDate)}&logTime=${encodeURIComponent(logTime)}&locationGPS=${encodeURIComponent(locationGPS)}&device=${encodeURIComponent(device)}&ipAddress=${encodeURIComponent(ipAddress)}&scheduleStart=${encodeURIComponent(scheduleStart)}`,
-      { method: 'GET', mode: 'cors', redirect: 'follow' }
-    );
-    return response.json();
-  },
+clockIn: async (employeeID, employeeName, schedArrangement, locationGPS, scheduleStart, scheduleEnd, isNightShift) => {
+  const now = new Date();
+  const logDate = formatDate(now);
+  const logTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const device = getDeviceInfo();
+  const ipAddress = await getIPAddress();
+  
+  console.log('📤 API - isNightShift (0 or 1):', isNightShift);
+  
+  const response = await fetch(
+    `${API_BASE}?endpoint=clockIn&employeeID=${encodeURIComponent(employeeID)}&employeeName=${encodeURIComponent(employeeName)}&schedArrangement=${encodeURIComponent(schedArrangement)}&logDate=${encodeURIComponent(logDate)}&logTime=${encodeURIComponent(logTime)}&locationGPS=${encodeURIComponent(locationGPS)}&device=${encodeURIComponent(device)}&ipAddress=${encodeURIComponent(ipAddress)}&scheduleStart=${encodeURIComponent(scheduleStart)}&scheduleEnd=${encodeURIComponent(scheduleEnd)}&isNightShift=${encodeURIComponent(isNightShift)}`,
+    { method: 'GET', mode: 'cors', redirect: 'follow' }
+  );
+  return response.json();
+},
 
   clockOut: async (employeeID, employeeName, schedArrangement, locationGPS, scheduleEnd) => {
     const now = new Date();

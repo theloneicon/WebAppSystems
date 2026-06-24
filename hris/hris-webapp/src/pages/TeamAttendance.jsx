@@ -197,6 +197,12 @@ function TeamAttendance({ user }) {
     return date.toLocaleDateString();
   };  
 
+  const formatMinutes = (minutes) => {
+    if (!minutes || minutes === 0) return '-';
+    const formatted = parseFloat(minutes.toFixed(2));
+    return `${formatted} min`;
+  };  
+
   // Future count
   const futureCount = attendanceRecords.filter(record => isFutureDate(record.date)).length;
 
@@ -243,7 +249,7 @@ function TeamAttendance({ user }) {
               <option value="LATE">⚠️ Late</option>
               <option value="ON LEAVE">🌴 On Leave</option>
               <option value="INCOMPLETE">🕐 Incomplete</option>
-              <option value="WEEKEND">📅 Weekend</option>
+              {/*<option value="WEEKEND">📅 Weekend</option>*/}
             </select>
           </div>
           <button onClick={loadTeamAttendance} className="refresh-btn">Refresh</button>
@@ -389,13 +395,13 @@ function TeamAttendance({ user }) {
             <small className="filter-hint">Week {weekFilter}</small>
           )}
         </div>
-        <div className="summary-card weekend">
+        {/*<div className="summary-card weekend">
           <h3>📅 Weekend</h3>
           <p className="summary-number">{filteredSummary.totalWeekend}</p>
           {weekFilter !== 'ALL' && (
             <small className="filter-hint">Week {weekFilter}</small>
           )}
-        </div>
+        </div>*/}
       </div>
 
       {/* Employee Summary Table - with toggle */}
@@ -413,7 +419,7 @@ function TeamAttendance({ user }) {
                   <th>⚠️ Late</th>
                   <th>🌴 On Leave</th>
                   <th>🕐 Incomplete</th>
-                  <th>📅 Weekend</th>
+                 {/*} <th>📅 Weekend</th> */}
                   <th>Attendance Rate</th>
                 </tr>
               </thead>
@@ -482,7 +488,7 @@ function TeamAttendance({ user }) {
                       <td className="late-cell">{emp.late}</td>
                       <td className="leave-cell">{emp.onLeave}</td>
                       <td className="incomplete-cell">{emp.incomplete}</td>
-                      <td className="weekend-cell">{emp.weekend}</td>
+                      {/*<td className="weekend-cell">{emp.weekend}</td>*/}
                       <td>
                         {emp.total > 0 ? Math.round(((emp.complete) / (emp.total - emp.weekend)) * 100) : 0}%
                       </td>
@@ -546,10 +552,10 @@ function TeamAttendance({ user }) {
                         </span>
                       </td>
                       <td className={record.tardinessMinutes > 0 && !record.isTardyExcused && !isFutureDate(displayDate) ? 'violation-cell' : ''}>
-                        {record.tardinessMinutes > 0 && !isFutureDate(displayDate) ? `${record.tardinessMinutes} min` : '-'}
+                        {record.tardinessMinutes > 0 && !isFutureDate(displayDate) ? `${formatMinutes(record.tardinessMinutes)}` : '-'}
                       </td>
                       <td className={record.undertimeMinutes > 0 && !record.isUndertimeExcused && !isFutureDate(displayDate) ? 'violation-cell' : ''}>
-                        {record.undertimeMinutes > 0 && !isFutureDate(displayDate) ? `${record.undertimeMinutes} min` : '-'}
+                        {record.undertimeMinutes > 0 && !isFutureDate(displayDate) ? `${formatMinutes(record.undertimeMinutes)}` : '-'}
                       </td>
                     </tr>
                   );

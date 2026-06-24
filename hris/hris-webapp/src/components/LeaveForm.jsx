@@ -159,10 +159,11 @@ function LeaveForm({ user, onSubmit }) {
   const getRoleDisplay = () => {
     switch(user.roleCateg) {
       case 'Normal': return '👤 Normal User';
-      case 'Approver05': return '👑 Regular Approver';
-      case 'Approver07': return '⭐ Sr. Approver';
-      case 'Approver08': return '⭐ Sr. Approver';
-      case 'Approver09': return '🌟 CEO Approver';
+      case 'Admin01': return '🙍‍♂️ Admin User';
+      case 'Approver05': return '⭐ Regular Approver';
+      case 'Approver07': return '🌟 Sr. Approver';
+      case 'Approver08': return '☀️ Sr. Approver';
+      case 'Approver09': return '👑 CEO Approver';
       default: return user.roleCateg || 'Unknown';
     }
   };
