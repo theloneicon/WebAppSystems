@@ -66,10 +66,11 @@ function Profile({ user }) {
   const getRoleCategoryDisplay = () => {
     switch(user.roleCateg) {
       case 'Normal': return '👤 Normal User';
-      case 'Approver05': return '👑 Regular Approver';
-      case 'Approver07': return '⭐ Sr. Approver';
-      case 'Approver08': return '⭐ Sr. Approver';
-      case 'Approver09': return '🌟 CEO Approver';
+      case 'Admin01': return '🙍‍♂️ Admin User';
+      case 'Approver05': return '⭐ Regular Approver';
+      case 'Approver07': return '🌟 Sr. Approver';
+      case 'Approver08': return '☀️ Sr. Approver';
+      case 'Approver09': return '👑 CEO Approver';
       default: return user.roleCateg || 'Not specified';
     }
   };
@@ -78,16 +79,41 @@ function Profile({ user }) {
   const getRoleCategoryDescription = () => {
     switch(user.roleCateg) {
       case 'Normal': return 'Cannot approve any requests';
-      case 'Approver05': return 'Can approve as Regular Approver only';
-      case 'Approver07': return 'Can approve as Regular Approver only';
-      case 'Approver08': return 'Can approve as Regular and Final Approver';
-      case 'Approver09': return 'Can approve as Final Approver (Skip approval)';
+      case 'Admin01': return 'Cannot approve any requests';
+      case 'Approver05': return 'Within department as Regular Approver only';
+      case 'Approver07': return 'Within department as Regular & Final Approver';
+      case 'Approver08': return 'Regular and Department wide Final Approver';
+      case 'Approver09': return 'Can approve as Final Approver';
       default: return '';
     }
   };
 
   // Determine if using alternate approver
   const isUsingAlternate = user.altRegAprvFlag === 1 && user.regAprvAlt && user.regAprvAlt !== 0;
+
+  // ⭐ NEW: Get shift icon and display
+  const getShiftDisplay = () => {
+    const isNightShift = user.isNightShift === 1 || user.isNightShift === true;
+    const icon = isNightShift ? '🌙' : '☀️';
+    const label = isNightShift ? 'Night Shift' : 'Day Shift';
+    return { icon, label, isNightShift };
+  };
+
+  // ⭐ NEW: Format time display
+  const formatTimeDisplay = (timeString) => {
+    if (!timeString) return '-';
+    if (timeString.match(/(\d+):(\d+)\s*(AM|PM)/i)) {
+      return timeString;
+    }
+    try {
+      const date = new Date(timeString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return timeString;
+    }
+  };
+
+  const shift = getShiftDisplay();
 
   return (
     <div className="profile">
@@ -118,6 +144,36 @@ function Profile({ user }) {
             <label>Department:</label>
             <span>{user.deptName} (ID: {user.deptID})</span>
           </div>
+
+          {/* ⭐ NEW: Regular Shift Hours */}
+          <div className="detail-row">
+            <label>Schedule Arrangement:</label>
+            <span>
+              {user.schedArrangement} 
+            </span>
+          </div>
+
+          
+          {/* ⭐ NEW: Regular Shift Hours */}
+          <div className="detail-row">
+            <label>Regular Shift Hours:</label>
+            <span>
+              {formatTimeDisplay(user.regHoursFr)} - {formatTimeDisplay(user.regHoursTo)}
+            </span>
+          </div>
+
+          {/* ⭐ NEW: Shift Type with Icon */}
+          <div className="detail-row">
+            <label>Shift Type:</label>
+            <span className="shift-display">
+              <span className="shift-icon">{shift.icon}</span>
+              {shift.label}
+              <span className={`shift-badge ${shift.isNightShift ? 'night' : 'day'}`}>
+                {shift.isNightShift ? '🌙 Night' : '☀️ Day'}
+              </span>
+            </span>
+          </div>
+
           <div className="detail-row">
             <label>Role ID:</label>
             <span>{user.roleId}</span>
@@ -151,12 +207,14 @@ function Profile({ user }) {
             <label>Final Approver:</label>
             <span>{loading ? 'Loading...' : finalApproverName}</span>
           </div>
+          {/* 
           <div className="detail-row">
             <label>Allowed Regularization:</label>
             <span>
               {user.allowedRegzn === 1 ? '✅ Yes' : '❌ No'}
             </span>
           </div>
+          */}
           <div className="detail-row">
             <label>Status:</label>
             <span className={user.status === 'ACTIVE' ? 'status-active' : 'status-inactive'}>

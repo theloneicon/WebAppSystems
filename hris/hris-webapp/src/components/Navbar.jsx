@@ -1,101 +1,238 @@
 // src/components/Navbar.jsx
 import { Link, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
-
 
 function Navbar({ user, onLogout }) {
   const location = useLocation();
   
-  // Role-based access control - USING ROLE_CATEG
+  // Role-based access control
   const isAdmin = user?.accessLevel === 1;
   const isRegularApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07';
-  const isFinalApprover = user?.roleCateg === 'Approver08';
+  const isFinalApprover = user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver09';
   const isDeptApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07';
-  
-  // Check if user is allowed to file Regularization (Official Business)
+  const isCEO = user?.roleCateg === 'Approver09';
   const canRegularize = user?.allowedRegzn === 1;
   
+  // App States
+  const [pendingClockOut, setPendingClockOut] = useState(false);
   const [todayStatus, setTodayStatus] = useState(null);
   const [clocking, setClocking] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [pendingClockOut, setPendingClockOut] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Controls dynamic cooldown re-renders locally
+  const [cooldownTrigger, setCooldownTrigger] = useState(0);
+  
+  const isClockedInRef = useRef(false);
+  const clockInTimeRef = useRef(null);
 
+  // Synchronous state hydration upon component initialization
   useEffect(() => {
     if (user?.id) {
-      checkTodayStatus();
       const stored = localStorage.getItem(`pendingClockOut_${user.id}`);
-      console.log('Stored pendingClockOut:', stored);
-      setPendingClockOut(stored === 'true');
+      const storedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
+      
+      if (stored === 'true') {
+        isClockedInRef.current = true;
+        if (storedClockInTime) clockInTimeRef.current = storedClockInTime;
+        
+        setPendingClockOut(true);
+        setTodayStatus({
+          clockedIn: true,
+          clockedOut: false,
+          clockInTime: storedClockInTime || 'Just now',
+          isOnLeave: false
+        });
+      }
+      
+      // Sync local status against the database payload
+      checkTodayStatus();
     }
   }, [user?.id]);
 
-  const checkTodayStatus = async () => {
-    const result = await api.getTodayAttendance(user.id);
-    console.log('Today attendance result:', result);
-    if (result.success) {
-      setTodayStatus(result);
-      
-      if (result.clockedIn && !result.clockedOut) {
-        console.log('User is clocked in but not out, setting flag');
-        localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
-        setPendingClockOut(true);
-      } else if (result.clockedOut) {
-        console.log('User is clocked out, clearing flag');
-        localStorage.removeItem(`pendingClockOut_${user.id}`);
-        setPendingClockOut(false);
+  // Runs an active checker loop if a safety delay is running when page mounts or updates
+  useEffect(() => {
+    const savedUnlockTime = localStorage.getItem(`clockOutUnlockTime_${user?.id}`);
+    if (savedUnlockTime) {
+      const timeLeft = parseInt(savedUnlockTime) - Date.now();
+      if (timeLeft > 0) {
+        const timer = setTimeout(() => {
+          localStorage.removeItem(`clockOutUnlockTime_${user?.id}`);
+          setCooldownTrigger(prev => prev + 1); // Triggers re-render to lift lock
+        }, timeLeft);
+        return () => clearTimeout(timer);
+      } else {
+        localStorage.removeItem(`clockOutUnlockTime_${user?.id}`);
       }
     }
+  }, [user?.id, todayStatus]);
+
+  const checkTodayStatus = async () => {
+    if (!user?.id) return;
+    setLoadingStatus(true);
+    try {
+      const result = await api.getTodayAttendance(user.id);
+      console.log('📡 Server response:', result);
+      
+      if (result && result.success) {
+        const attendanceData = result.data || result;
+        const localIsClockedIn = localStorage.getItem(`pendingClockOut_${user.id}`) === 'true';
+
+        // Keep session active if database record or persistent local session exists
+        if ((attendanceData.clockedIn && !attendanceData.clockedOut) || (localIsClockedIn && !attendanceData.clockedOut)) {
+          console.log('🌙 Active Shift Session Confirmed.');
+          
+          localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
+          setPendingClockOut(true);
+          isClockedInRef.current = true;
+          
+          const savedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
+          if (savedClockInTime && !clockInTimeRef.current) {
+            clockInTimeRef.current = savedClockInTime;
+          }
+          
+          setTodayStatus({
+            ...attendanceData,
+            clockedIn: true,
+            clockedOut: false,
+            clockInTime: clockInTimeRef.current || attendanceData.clockInTime || 'Active Shift'
+          });
+          
+        } else if (attendanceData.clockedOut) {
+          console.log('User safely clocked out completely.');
+          cleanupClockStates();
+          setTodayStatus(attendanceData);
+        } else {
+          console.log('User is NOT clocked in');
+          cleanupClockStates();
+          setTodayStatus({
+            clockedIn: false,
+            clockedOut: false,
+            isOnLeave: attendanceData.isOnLeave || false
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error checking today status:', error);
+    } finally {
+      setLoadingStatus(false);
+      setIsInitialized(true);
+    }
+  };
+
+  const cleanupClockStates = () => {
+    localStorage.removeItem(`pendingClockOut_${user.id}`);
+    localStorage.removeItem(`clockInTime_${user.id}`);
+    localStorage.removeItem(`clockOutUnlockTime_${user.id}`);
+    setPendingClockOut(false);
+    isClockedInRef.current = false;
   };
 
   const handleClockIn = async () => {
     setClocking(true);
-    const result = await api.clockIn(
-      user.id,
-      user.name,
-      user.schedArrangement,
-      '',
-      user.regHoursFr || '8:00 AM'
-    );
-    console.log('Clock in result:', result);
-    console.log('User object:', user);
-    console.log('Sched Arrangement:', user.schedArrangement);
+    try {
+      // ⭐ Get isNightShift from user object
+     const isNightShift = user?.isNightShift ?? 0 ;
+      
+      const result = await api.clockIn(
+        user.id,
+        user.name,
+        user.schedArrangement,
+        '',
+        user.regHoursFr || '8:00 AM',   // ⭐ From user profile
+        user.regHoursTo || '5:00 PM',   // ⭐ From user profile
+        isNightShift  // ⭐ NEW: Pass isNightShift
+      );
 
-    if (result.success) {
-      alert('✅ Clocked In successfully!');
-      localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
-      setPendingClockOut(true);
-      await checkTodayStatus();
-    } else {
-      alert('❌ Error: ' + result.error);
+      if (result && result.success) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const newStatus = {
+          clockedIn: true,
+          clockedOut: false,
+          clockInTime: timeStr,
+          isOnLeave: false,
+          morningBreakTaken: false,
+          lunchBreakTaken: false,
+          afternoonBreakTaken: false,
+          tardinessMinutes: result.tardinessMinutes || 0,
+          undertimeMinutes: 0,
+          isNightShift: isNightShift  // ⭐ NEW: Store in state
+        };
+        
+        setTodayStatus(newStatus);
+        setPendingClockOut(true);
+        isClockedInRef.current = true;
+        clockInTimeRef.current = timeStr;
+        
+        localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
+        localStorage.setItem(`clockInTime_${user.id}`, timeStr);
+        localStorage.setItem(`isNightShift_${user.id}`, isNightShift); // ⭐ NEW: Store
+        
+        // 🔒 ACCIDENTAL CLICK COOLDOWN: 60 seconds
+        const unlockTimestamp = Date.now() + 60000;
+        localStorage.setItem(`clockOutUnlockTime_${user.id}`, unlockTimestamp);
+        
+        setTimeout(() => {
+          localStorage.removeItem(`clockOutUnlockTime_${user.id}`);
+          setCooldownTrigger(prev => prev + 1);
+        }, 60000);
+        
+        alert('✅ Clocked In successfully!');
+        
+      } else {
+        alert('❌ Error: ' + (result?.error || 'Unknown response structure'));
+      }
+    } catch (error) {
+      console.error('Clock in error:', error);
+      alert('❌ Error: ' + error.message);
+    } finally {
+      setClocking(false);
     }
-    setClocking(false);
   };
 
   const handleClockOut = async () => {
-    if (!pendingClockOut) {
-      alert('⏰ Please log out and log back in to clock out.');
+    const savedUnlockTime = localStorage.getItem(`clockOutUnlockTime_${user?.id}`);
+    if (savedUnlockTime && Date.now() < parseInt(savedUnlockTime)) {
+      alert('⏰ Safety Cooldown Active! Please wait a moment before trying to Clock Out.');
       return;
     }
-    
+
     setClocking(true);
-    const result = await api.clockOut(
-      user.id,
-      user.name,
-      user.schedArrangement,
-      '',
-      user.regHoursTo || '5:00 PM'
-    );
-    console.log('Clock out result:', result);
-    if (result.success) {
-      alert('✅ Clocked Out successfully!');
-      localStorage.removeItem(`pendingClockOut_${user.id}`);
-      setPendingClockOut(false);
-      await checkTodayStatus();
-    } else {
-      alert('❌ Error: ' + result.error);
+    try {
+      const result = await api.clockOut(
+        user.id,
+        user.name,
+        user.schedArrangement,
+        '',
+        user.regHoursTo || '5:00 PM'
+      );
+      
+      if (result && result.success) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const newStatus = {
+          ...todayStatus,
+          clockedOut: true,
+          clockOutTime: timeStr
+        };
+        
+        setTodayStatus(newStatus);
+        cleanupClockStates();
+        alert('✅ Clocked Out successfully!');
+      } else {
+        alert('❌ Error: ' + (result?.error || 'Unknown tracking parser error'));
+      }
+    } catch (error) {
+      console.error('Clock out error:', error);
+      alert('❌ Error: ' + error.message);
+    } finally {
+      setClocking(false);
     }
-    setClocking(false);
   };
 
   const getRoleIcon = () => {
@@ -111,19 +248,12 @@ function Navbar({ user, onLogout }) {
     return 'Normal User';
   };
 
-  const handleMouseEnter = (dropdown) => {
-    setOpenDropdown(dropdown);
-  };
-
-  const handleMouseLeave = () => {
-    setOpenDropdown(null);
-  };
+  const handleMouseEnter = (dropdown) => setOpenDropdown(dropdown);
+  const handleMouseLeave = () => setOpenDropdown(null);
 
   const formatTimeDisplay = (timeString) => {
     if (!timeString) return '';
-    if (timeString.match(/(\d+):(\d+)\s*(AM|PM)/i)) {
-      return timeString;
-    }
+    if (timeString.match(/(\d+):(\d+)\s*(AM|PM)/i)) return timeString;
     try {
       const date = new Date(timeString);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -132,17 +262,69 @@ function Navbar({ user, onLogout }) {
     }
   };
 
-  const shouldShowClockOut = todayStatus?.clockedIn && !todayStatus?.clockedOut;
-  const isClockOutEnabled = shouldShowClockOut && pendingClockOut;
+  const renderClockSection = () => {
+    if (loadingStatus && !isInitialized) {
+      return <div className="clock-status loading">⏳ Loading...</div>;
+    }
 
-  console.log('Render state:', { shouldShowClockOut, pendingClockOut, isClockOutEnabled });
+    const isClockedIn = todayStatus?.clockedIn || isClockedInRef.current;
+    const isClockedOut = todayStatus?.clockedOut;
+
+    if (todayStatus?.isOnLeave && !isClockedIn) {
+      return <div className="clock-status on-leave">📅 On Leave Today</div>;
+    }
+
+    if (!isClockedIn) {
+      return (
+        <button onClick={handleClockIn} disabled={clocking} className="clock-nav-btn clock-in">
+          {clocking ? '⏳ Clocking In...' : '🕐 CLOCK IN'}
+        </button>
+      );
+    }
+
+    if (isClockedIn && !isClockedOut) {
+      const displayTime = clockInTimeRef.current || todayStatus?.clockInTime;
+      
+      // Calculate dynamic cooldown evaluation window
+      const savedUnlockTime = localStorage.getItem(`clockOutUnlockTime_${user?.id}`);
+      const isClockOutDisabled = savedUnlockTime ? Date.now() < parseInt(savedUnlockTime) : false;
+      
+      return (
+        <div className="clock-status clocked-in">
+          <span>✅ Clocked in at <strong>{formatTimeDisplay(displayTime)}</strong></span>
+          <button 
+            onClick={handleClockOut} 
+            disabled={clocking || isClockOutDisabled}
+            className={`clock-nav-btn clock-out ${isClockOutDisabled ? 'disabled' : ''}`}
+            title={isClockOutDisabled ? 'Accidental click protection active for 1 minute' : ''}
+          >
+            {clocking ? '⏳ Clocking Out...' : '🏁 CLOCK OUT'}
+            {isClockOutDisabled && ' 🔒'}
+          </button>
+          {isClockOutDisabled && <span className="clock-hint">(Locked temporary)</span>}
+        </div>
+      );
+    }
+
+    if (isClockedIn && isClockedOut) {
+      return (
+        <div className="clock-status completed">
+          ✅ Completed: {formatTimeDisplay(todayStatus?.clockInTime)} - {formatTimeDisplay(todayStatus?.clockOutTime)}
+        </div>
+      );
+    }
+
+    return (
+      <button onClick={handleClockIn} disabled={clocking} className="clock-nav-btn clock-in">
+        {clocking ? '⏳ Clocking In...' : '🕐 CLOCK IN'}
+      </button>
+    );
+  };
 
   return (
     <nav className="navbar">
       <div className="nav-top-row">
-        <div className="nav-brand">
-          <h3>HRIS Web App</h3>
-        </div>
+        <div className="nav-brand"><h3>HRIS Web App</h3></div>
         <div className="nav-user">
           <span className="user-info">
             <span className="role-icon">{getRoleIcon()}</span>
@@ -153,139 +335,53 @@ function Navbar({ user, onLogout }) {
         </div>
       </div>
 
-      {/* Clock In/Out Section */}
-      <div className="nav-clock-section">
-        {todayStatus?.isOnLeave ? (
-          <div className="clock-status on-leave">
-            📅 On Leave Today
-          </div>
-        ) : !todayStatus?.clockedIn ? (
-          <button 
-            onClick={handleClockIn} 
-            disabled={clocking}
-            className="clock-nav-btn clock-in"
-          >
-            🕐 CLOCK IN
-          </button>
-        ) : !todayStatus?.clockedOut ? (
-          <div className="clock-status clocked-in">
-            ✅ Clocked in at {formatTimeDisplay(todayStatus.clockInTime)}
-            <button 
-              onClick={handleClockOut} 
-              disabled={clocking || !isClockOutEnabled}
-              className={`clock-nav-btn clock-out ${!isClockOutEnabled ? 'disabled' : ''}`}
-              title={!isClockOutEnabled ? 'Please log out and log back in to clock out' : ''}
-            >
-              🏁 CLOCK OUT {!isClockOutEnabled && '(Re-login required)'}
-            </button>
-          </div>
-        ) : (
-          <div className="clock-status completed">
-            ✅ Completed: {formatTimeDisplay(todayStatus.clockInTime)} - {formatTimeDisplay(todayStatus.clockOutTime)}
-          </div>
-        )}
-      </div>
+      <div className="nav-clock-section">{renderClockSection()}</div>
 
-      {/* Navigation Menu with Dropdowns */}
       <div className="nav-links">
-        {/* My Dashboard Dropdown - For Normal Users */}
-        <div 
-          className="dropdown"
-          onMouseEnter={() => handleMouseEnter('mydashboard')}
-          onMouseLeave={handleMouseLeave}
-        >
-          <button className="dropdown-btn">
-            <span className="nav-icon">👤</span> My Dashboard <span className="dropdown-arrow">▼</span>
-          </button>
-          {openDropdown === 'mydashboard' && (
-            <div className="dropdown-content">
-              <Link to="/dashboard" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">📊</span> Leaves Record
-              </Link>
-              <Link to="/my-attendance" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">📅</span> Attendance Record
-              </Link>
-              <Link to="/my-requests" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">📋</span> Leave Requests
-              </Link>
-              <Link to="/new-request" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">✨</span> File New Leaves
-              </Link>
-              {canRegularize && (
-                <Link to="/regularization" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">🔄</span> Regularization
-                </Link>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Team Dashboard Dropdown - For Approvers (Approver05 & Approver08 & Approver07) */}
-        {isDeptApprover && (
-          <div 
-            className="dropdown"
-            onMouseEnter={() => handleMouseEnter('teamdashboard')}
-            onMouseLeave={handleMouseLeave}
-          >
-            <button className="dropdown-btn">
-              <span className="nav-icon">👥</span> Team Dashboard <span className="dropdown-arrow">▼</span>
-            </button>
-            {openDropdown === 'teamdashboard' && (
+        {!isCEO && (
+          <div className="dropdown" onMouseEnter={() => handleMouseEnter('mydashboard')} onMouseLeave={handleMouseLeave}>
+            <button className="dropdown-btn">👤 My Dashboard <span className="dropdown-arrow">▼</span></button>
+            {openDropdown === 'mydashboard' && (
               <div className="dropdown-content">
-                {isRegularApprover && (
-                  <Link to="/approvals" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">✅</span>Team Leave Mngt
-                  </Link>
-                )}                
-                <Link to="/dept-requests" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">📋</span> Team Leave Status
-                </Link>
-                <Link to="/team-attendance" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">📅</span> Team Attendance
-                </Link>
-               </div>
-            )}
-          </div>
-        )}
-
-        {/* Admin Dropdown - For Admin only */}
-        {isAdmin && (
-          <div 
-            className="dropdown"
-            onMouseEnter={() => handleMouseEnter('admin')}
-            onMouseLeave={handleMouseLeave}
-          >
-            <button className="dropdown-btn">
-              <span className="nav-icon">🔧</span> Admin <span className="dropdown-arrow">▼</span>
-            </button>
-            {openDropdown === 'admin' && (
-              <div className="dropdown-content">
-                {isFinalApprover && (
-                  <Link to="/final-approvals" onClick={() => setOpenDropdown(null)}>
-                    <span className="nav-icon">✅</span> All Leaves Mngt
-                  </Link>
-                )}      
-              <Link to="/all-attendance" onClick={() => setOpenDropdown(null)}>
-                <span className="nav-icon">📅</span> All Attendance
-              </Link>          
-                <Link to="/admin" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">📋</span> All Leaves Status
-                </Link>
-                <Link to="/daily-timekeep" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">📊</span> Daily Timekeep
-                </Link>                
-                <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>
-                  <span className="nav-icon">🔧</span> HR Acknowledgement
-                </Link>
+                <Link to="/dashboard" onClick={() => setOpenDropdown(null)}>📊 Leaves Record</Link>
+                <Link to="/my-attendance" onClick={() => setOpenDropdown(null)}>📅 Attendance Record</Link>
+                <Link to="/my-requests" onClick={() => setOpenDropdown(null)}>📋 Leave Requests</Link>
+                <Link to="/new-request" onClick={() => setOpenDropdown(null)}>✨ File New Leaves</Link>
+                {canRegularize && <Link to="/regularization" onClick={() => setOpenDropdown(null)}>🔄 Regularization</Link>}
               </div>
             )}
           </div>
         )}
 
-        {/* Profile Link (no dropdown) */}
-        <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
-          <span className="nav-icon">👤</span> Profile
-        </Link>
+        {isDeptApprover && (
+          <div className="dropdown" onMouseEnter={() => handleMouseEnter('teamdashboard')} onMouseLeave={handleMouseLeave}>
+            <button className="dropdown-btn">👥 Team Dashboard <span className="dropdown-arrow">▼</span></button>
+            {openDropdown === 'teamdashboard' && (
+              <div className="dropdown-content">
+                {isRegularApprover && <Link to="/approvals" onClick={() => setOpenDropdown(null)}>✅ Team Leave Mngt</Link>}
+                <Link to="/dept-requests" onClick={() => setOpenDropdown(null)}>📋 Team Leave Status</Link>
+                <Link to="/team-attendance" onClick={() => setOpenDropdown(null)}>📅 Team Attendance</Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className="dropdown" onMouseEnter={() => handleMouseEnter('admin')} onMouseLeave={handleMouseLeave}>
+            <button className="dropdown-btn">🔧 Admin <span className="dropdown-arrow">▼</span></button>
+            {openDropdown === 'admin' && (
+              <div className="dropdown-content">
+                {isFinalApprover && <Link to="/final-approvals" onClick={() => setOpenDropdown(null)}>✅ All Leaves Mngt</Link>}
+                <Link to="/all-attendance" onClick={() => setOpenDropdown(null)}>📅 All Attendance</Link>
+                <Link to="/admin" onClick={() => setOpenDropdown(null)}>📋 All Leaves Status</Link>
+                <Link to="/daily-timekeep" onClick={() => setOpenDropdown(null)}>📊 Daily Timekeep</Link>
+                <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>🔧 HR Acknowledgement</Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>👤 Profile</Link>
       </div>
     </nav>
   );
