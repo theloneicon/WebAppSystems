@@ -159,13 +159,13 @@ function Navbar({ user, onLogout }) {
         localStorage.setItem(`clockInTime_${user.id}`, timeStr);
         
         // 🔒 Cooldown: 60 seconds
-        const unlockTimestamp = Date.now() + 60000;
+        const unlockTimestamp = Date.now() + 5000;
         localStorage.setItem(`clockOutUnlockTime_${user.id}`, unlockTimestamp);
         
         setTimeout(() => {
           localStorage.removeItem(`clockOutUnlockTime_${user.id}`);
           setCooldownTrigger(prev => prev + 1);
-        }, 60000);
+        }, 5000);
         
         alert('✅ Clocked In successfully! Clock Out button is locked for 1 minute.');
         
