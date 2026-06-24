@@ -28,46 +28,15 @@ function Navbar({ user, onLogout }) {
   const isClockedInRef = useRef(false);
   const clockInTimeRef = useRef(null);
 
-  // Synchronous state hydration upon component initialization
+  // ⭐ NEW: Track if we've checked the server
+  const serverCheckedRef = useRef(false);
+
   useEffect(() => {
     if (user?.id) {
-      const stored = localStorage.getItem(`pendingClockOut_${user.id}`);
-      const storedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
-      
-      if (stored === 'true') {
-        isClockedInRef.current = true;
-        if (storedClockInTime) clockInTimeRef.current = storedClockInTime;
-        
-        setPendingClockOut(true);
-        setTodayStatus({
-          clockedIn: true,
-          clockedOut: false,
-          clockInTime: storedClockInTime || 'Just now',
-          isOnLeave: false
-        });
-      }
-      
-      // Sync local status against the database payload
+      // ⭐ ALWAYS check server first - this is the source of truth
       checkTodayStatus();
     }
   }, [user?.id]);
-
-  // Runs an active checker loop if a safety delay is running when page mounts or updates
-  useEffect(() => {
-    const savedUnlockTime = localStorage.getItem(`clockOutUnlockTime_${user?.id}`);
-    if (savedUnlockTime) {
-      const timeLeft = parseInt(savedUnlockTime) - Date.now();
-      if (timeLeft > 0) {
-        const timer = setTimeout(() => {
-          localStorage.removeItem(`clockOutUnlockTime_${user?.id}`);
-          setCooldownTrigger(prev => prev + 1); // Triggers re-render to lift lock
-        }, timeLeft);
-        return () => clearTimeout(timer);
-      } else {
-        localStorage.removeItem(`clockOutUnlockTime_${user?.id}`);
-      }
-    }
-  }, [user?.id, todayStatus]);
 
   const checkTodayStatus = async () => {
     if (!user?.id) return;
@@ -77,45 +46,65 @@ function Navbar({ user, onLogout }) {
       console.log('📡 Server response:', result);
       
       if (result && result.success) {
-        const attendanceData = result.data || result;
-        const localIsClockedIn = localStorage.getItem(`pendingClockOut_${user.id}`) === 'true';
-
-        // Keep session active if database record or persistent local session exists
-        if ((attendanceData.clockedIn && !attendanceData.clockedOut) || (localIsClockedIn && !attendanceData.clockedOut)) {
-          console.log('🌙 Active Shift Session Confirmed.');
+        // ⭐ SERVER IS THE SOURCE OF TRUTH
+        // Update state based on server response
+        setTodayStatus(result);
+        
+        if (result.clockedIn && !result.clockedOut) {
+          console.log('✅ Server says: User IS clocked in');
           
+          // Update localStorage to match server (for this device)
           localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
+          if (result.clockInTime) {
+            localStorage.setItem(`clockInTime_${user.id}`, result.clockInTime);
+            clockInTimeRef.current = result.clockInTime;
+          }
+          
           setPendingClockOut(true);
           isClockedInRef.current = true;
           
-          const savedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
-          if (savedClockInTime && !clockInTimeRef.current) {
-            clockInTimeRef.current = savedClockInTime;
-          }
-          
+          // Update todayStatus to ensure UI shows clocked in
           setTodayStatus({
-            ...attendanceData,
+            ...result,
             clockedIn: true,
             clockedOut: false,
-            clockInTime: clockInTimeRef.current || attendanceData.clockInTime || 'Active Shift'
+            clockInTime: clockInTimeRef.current || result.clockInTime || 'Active Shift'
           });
           
-        } else if (attendanceData.clockedOut) {
-          console.log('User safely clocked out completely.');
+        } else if (result.clockedOut) {
+          console.log('✅ Server says: User IS clocked out');
           cleanupClockStates();
-          setTodayStatus(attendanceData);
+          setTodayStatus(result);
+          
         } else {
-          console.log('User is NOT clocked in');
+          console.log('✅ Server says: User is NOT clocked in');
           cleanupClockStates();
           setTodayStatus({
             clockedIn: false,
             clockedOut: false,
-            isOnLeave: attendanceData.isOnLeave || false
+            isOnLeave: result.isOnLeave || false
           });
         }
       }
+      
+      serverCheckedRef.current = true;
+      
     } catch (error) {
       console.error('Error checking today status:', error);
+      // ⭐ On error, fallback to localStorage
+      const stored = localStorage.getItem(`pendingClockOut_${user.id}`);
+      if (stored === 'true') {
+        const storedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
+        isClockedInRef.current = true;
+        if (storedClockInTime) clockInTimeRef.current = storedClockInTime;
+        setPendingClockOut(true);
+        setTodayStatus({
+          clockedIn: true,
+          clockedOut: false,
+          clockInTime: storedClockInTime || 'Just now',
+          isOnLeave: false
+        });
+      }
     } finally {
       setLoadingStatus(false);
       setIsInitialized(true);
@@ -133,17 +122,16 @@ function Navbar({ user, onLogout }) {
   const handleClockIn = async () => {
     setClocking(true);
     try {
-      // ⭐ Get isNightShift from user object
-     const isNightShift = user?.isNightShift ?? 0 ;
+      const isNightShift = user?.isNightShift || false;
       
       const result = await api.clockIn(
         user.id,
         user.name,
         user.schedArrangement,
         '',
-        user.regHoursFr || '8:00 AM',   // ⭐ From user profile
-        user.regHoursTo || '5:00 PM',   // ⭐ From user profile
-        isNightShift  // ⭐ NEW: Pass isNightShift
+        user.regHoursFr || '8:00 AM',
+        user.regHoursTo || '5:00 PM',
+        isNightShift
       );
 
       if (result && result.success) {
@@ -159,8 +147,7 @@ function Navbar({ user, onLogout }) {
           lunchBreakTaken: false,
           afternoonBreakTaken: false,
           tardinessMinutes: result.tardinessMinutes || 0,
-          undertimeMinutes: 0,
-          isNightShift: isNightShift  // ⭐ NEW: Store in state
+          undertimeMinutes: 0
         };
         
         setTodayStatus(newStatus);
@@ -170,9 +157,8 @@ function Navbar({ user, onLogout }) {
         
         localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
         localStorage.setItem(`clockInTime_${user.id}`, timeStr);
-        localStorage.setItem(`isNightShift_${user.id}`, isNightShift); // ⭐ NEW: Store
         
-        // 🔒 ACCIDENTAL CLICK COOLDOWN: 60 seconds
+        // 🔒 Cooldown: 60 seconds
         const unlockTimestamp = Date.now() + 60000;
         localStorage.setItem(`clockOutUnlockTime_${user.id}`, unlockTimestamp);
         
@@ -181,7 +167,7 @@ function Navbar({ user, onLogout }) {
           setCooldownTrigger(prev => prev + 1);
         }, 60000);
         
-        alert('✅ Clocked In successfully!');
+        alert('✅ Clocked In successfully! Clock Out button is locked for 1 minute.');
         
       } else {
         alert('❌ Error: ' + (result?.error || 'Unknown response structure'));
@@ -267,6 +253,7 @@ function Navbar({ user, onLogout }) {
       return <div className="clock-status loading">⏳ Loading...</div>;
     }
 
+    // ⭐ CRITICAL: Use server data (todayStatus) as source of truth
     const isClockedIn = todayStatus?.clockedIn || isClockedInRef.current;
     const isClockedOut = todayStatus?.clockedOut;
 
@@ -285,7 +272,6 @@ function Navbar({ user, onLogout }) {
     if (isClockedIn && !isClockedOut) {
       const displayTime = clockInTimeRef.current || todayStatus?.clockInTime;
       
-      // Calculate dynamic cooldown evaluation window
       const savedUnlockTime = localStorage.getItem(`clockOutUnlockTime_${user?.id}`);
       const isClockOutDisabled = savedUnlockTime ? Date.now() < parseInt(savedUnlockTime) : false;
       
