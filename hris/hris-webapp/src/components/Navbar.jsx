@@ -77,27 +77,32 @@ function Navbar({ user, onLogout }) {
       console.log('📡 Server response:', result);
       
       if (result && result.success) {
+        // Handle nested vs flat payloads safely
         const attendanceData = result.data || result;
         const localIsClockedIn = localStorage.getItem(`pendingClockOut_${user.id}`) === 'true';
 
-        // Keep session active if database record or persistent local session exists
+        // Check if DB explicitly says user is clocked in OR if local storage says so
         if ((attendanceData.clockedIn && !attendanceData.clockedOut) || (localIsClockedIn && !attendanceData.clockedOut)) {
           console.log('🌙 Active Shift Session Confirmed.');
           
+          // Determine the correct clock-in time string from DB or Local Storage
+          const databaseTime = attendanceData.clockInTime || attendanceData.clock_in_time; // fallback for naming conventions
+          const savedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
+          const finalClockInTime = databaseTime || savedClockInTime || 'Active Shift';
+
+          // 🔄 CRITICAL STEP: Hydrate Mobile Local Storage so the rest of your app matches up!
           localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
+          localStorage.setItem(`clockInTime_${user.id}`, finalClockInTime);
+          
           setPendingClockOut(true);
           isClockedInRef.current = true;
-          
-          const savedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
-          if (savedClockInTime && !clockInTimeRef.current) {
-            clockInTimeRef.current = savedClockInTime;
-          }
+          clockInTimeRef.current = finalClockInTime;
           
           setTodayStatus({
             ...attendanceData,
             clockedIn: true,
             clockedOut: false,
-            clockInTime: clockInTimeRef.current || attendanceData.clockInTime || 'Active Shift'
+            clockInTime: finalClockInTime
           });
           
         } else if (attendanceData.clockedOut) {
