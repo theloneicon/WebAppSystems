@@ -69,7 +69,7 @@ function Navbar({ user, onLogout }) {
     }
   }, [user?.id, todayStatus]);
 
-  const checkTodayStatus = async () => {
+const checkTodayStatus = async () => {
     if (!user?.id) return;
     setLoadingStatus(true);
     try {
@@ -119,6 +119,7 @@ function Navbar({ user, onLogout }) {
           });
         }
       }
+
     } catch (error) {
       console.error('Error checking today status:', error);
     } finally {
