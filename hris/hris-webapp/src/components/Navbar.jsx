@@ -73,26 +73,26 @@ function Navbar({ user, onLogout }) {
     if (!user?.id) return;
     setLoadingStatus(true);
     try {
+      // 1. Check local storage first as a source of truth for the active session
+      const localIsClockedIn = localStorage.getItem(`pendingClockOut_${user.id}`) === 'true';
+      const savedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
+
       const result = await api.getTodayAttendance(user.id);
       console.log('📡 Server response:', result);
       
       if (result) {
-        // Deep unpack to handle nested payload layouts safely
         const attendanceData = result.data ? result.data : result;
-        const localIsClockedIn = localStorage.getItem(`pendingClockOut_${user.id}`) === 'true';
-
-        // Check explicit boolean evaluations
+        
         const isDbClockedIn = attendanceData.clockedIn === true || attendanceData.clockedIn === 'true';
         const isDbClockedOut = attendanceData.clockedOut === true || attendanceData.clockedOut === 'true';
 
+        // 2. If local memory OR database confirms it, keep the shift active
         if ((isDbClockedIn && !isDbClockedOut) || (localIsClockedIn && !isDbClockedOut)) {
           console.log('🌙 Active Shift Session Confirmed.');
           
           const databaseTime = attendanceData.clockInTime || attendanceData.clock_in_time;
-          const savedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
           const finalClockInTime = databaseTime || savedClockInTime || 'Active Shift';
 
-          // Force Hydration on alternate logging device
           localStorage.setItem(`pendingClockOut_${user.id}`, 'true');
           localStorage.setItem(`clockInTime_${user.id}`, String(finalClockInTime));
           
@@ -116,13 +116,16 @@ function Navbar({ user, onLogout }) {
             clockedOut: true
           });
         } else {
-          console.log('User is NOT clocked in');
-          cleanupClockStates();
-          setTodayStatus({
-            clockedIn: false,
-            clockedOut: false,
-            isOnLeave: attendanceData.isOnLeave || false
-          });
+          // 3. Only clear states if BOTH local and DB say the user is completely off-shift
+          if (!localIsClockedIn) {
+            console.log('User is genuinely NOT clocked in');
+            cleanupClockStates();
+            setTodayStatus({
+              clockedIn: false,
+              clockedOut: false,
+              isOnLeave: attendanceData.isOnLeave || false
+            });
+          }
         }
       }
     } catch (error) {
