@@ -1,4 +1,8 @@
 // src/components/Navbar.jsx
+// =============================================================================
+// 📌 NAVBAR COMPONENT
+// =============================================================================
+
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
@@ -6,7 +10,9 @@ import { api } from '../utils/api';
 function Navbar({ user, onLogout }) {
   const location = useLocation();
   
-  // Role-based access control
+  // =============================================================================
+  // 🔐 ROLE-BASED ACCESS CONTROL (RBAC)
+  // =============================================================================
   const isAdmin = user?.accessLevel === 1;
   const isRegularApprover = user?.roleCateg === 'Approver05' || user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver07';
   const isFinalApprover = user?.roleCateg === 'Approver08' || user?.roleCateg === 'Approver09';
@@ -14,21 +20,26 @@ function Navbar({ user, onLogout }) {
   const isCEO = user?.roleCateg === 'Approver09';
   const canRegularize = user?.allowedRegzn === 1;
   
-  // App States
+  // ⭐ NEW: Attendance Regularization Approver
+  const isAttenRegApprover = user?.roleCateg === 'Approver07' || user?.roleCateg === 'Approver08' ||  user?.roleCateg === 'Approver09';
+  
+  // =============================================================================
+  // 📊 REACT STATE
+  // =============================================================================
   const [pendingClockOut, setPendingClockOut] = useState(false);
   const [todayStatus, setTodayStatus] = useState(null);
   const [clocking, setClocking] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
-  
-  // Controls dynamic cooldown re-renders locally
   const [cooldownTrigger, setCooldownTrigger] = useState(0);
   
   const isClockedInRef = useRef(false);
   const clockInTimeRef = useRef(null);
 
-  // Synchronous state hydration upon component initialization
+  // =============================================================================
+  // 🔄 EFFECTS (Clock In/Out logic - unchanged)
+  // =============================================================================
   useEffect(() => {
     if (user?.id) {
       const stored = localStorage.getItem(`pendingClockOut_${user.id}`);
@@ -47,12 +58,10 @@ function Navbar({ user, onLogout }) {
         });
       }
       
-      // Sync local status against the database payload
       checkTodayStatus();
     }
   }, [user?.id]);
 
-  // Runs an active checker loop if a safety delay is running when page mounts or updates
   useEffect(() => {
     const savedUnlockTime = localStorage.getItem(`clockOutUnlockTime_${user?.id}`);
     if (savedUnlockTime) {
@@ -60,7 +69,7 @@ function Navbar({ user, onLogout }) {
       if (timeLeft > 0) {
         const timer = setTimeout(() => {
           localStorage.removeItem(`clockOutUnlockTime_${user?.id}`);
-          setCooldownTrigger(prev => prev + 1); // Triggers re-render to lift lock
+          setCooldownTrigger(prev => prev + 1);
         }, timeLeft);
         return () => clearTimeout(timer);
       } else {
@@ -69,11 +78,13 @@ function Navbar({ user, onLogout }) {
     }
   }, [user?.id, todayStatus]);
 
+  // =============================================================================
+  // 📡 CHECK TODAY'S ATTENDANCE STATUS
+  // =============================================================================
   const checkTodayStatus = async () => {
     if (!user?.id) return;
     setLoadingStatus(true);
     try {
-      // 1. Check local storage first as a source of truth for the active session
       const localIsClockedIn = localStorage.getItem(`pendingClockOut_${user.id}`) === 'true';
       const savedClockInTime = localStorage.getItem(`clockInTime_${user.id}`);
 
@@ -86,7 +97,11 @@ function Navbar({ user, onLogout }) {
         const isDbClockedIn = attendanceData.clockedIn === true || attendanceData.clockedIn === 'true';
         const isDbClockedOut = attendanceData.clockedOut === true || attendanceData.clockedOut === 'true';
 
-        // 2. If local memory OR database confirms it, keep the shift active
+        const shouldShowClockIn = attendanceData.shouldShowClockIn === true;
+        const shouldShowCompleted = attendanceData.shouldShowCompleted === true;
+        const statusMessage = attendanceData.statusMessage || '';
+        const clockInDisabledReason = attendanceData.clockInDisabledReason || '';
+
         if ((isDbClockedIn && !isDbClockedOut) || (localIsClockedIn && !isDbClockedOut)) {
           console.log('🌙 Active Shift Session Confirmed.');
           
@@ -104,28 +119,39 @@ function Navbar({ user, onLogout }) {
             ...attendanceData,
             clockedIn: true,
             clockedOut: false,
-            clockInTime: String(finalClockInTime)
+            clockInTime: String(finalClockInTime),
+            shouldShowClockIn: false,
+            shouldShowCompleted: false
           });
           
-        } else if (isDbClockedOut) {
-          console.log('User safely clocked out completely.');
-          cleanupClockStates();
-          setTodayStatus({
-            ...attendanceData,
-            clockedIn: true,
-            clockedOut: true
-          });
         } else {
-          // 3. Only clear states if BOTH local and DB say the user is completely off-shift
-          if (!localIsClockedIn) {
-            console.log('User is genuinely NOT clocked in');
-            cleanupClockStates();
-            setTodayStatus({
-              clockedIn: false,
-              clockedOut: false,
-              isOnLeave: attendanceData.isOnLeave || false
-            });
-          }
+          console.log('User is NOT clocked in (or shift complete)');
+          
+          localStorage.removeItem(`pendingClockOut_${user.id}`);
+          localStorage.removeItem(`clockInTime_${user.id}`);
+          localStorage.removeItem(`clockOutUnlockTime_${user.id}`);
+          setPendingClockOut(false);
+          isClockedInRef.current = false;
+          clockInTimeRef.current = null;
+          
+          setTodayStatus({
+            clockedIn: false,
+            clockedOut: false,
+            isOnLeave: attendanceData.isOnLeave || false,
+            isNightShift: attendanceData.isNightShift || 0,
+            shouldShowClockIn: shouldShowClockIn,
+            shouldShowCompleted: shouldShowCompleted,
+            statusMessage: statusMessage,
+            clockInDisabledReason: clockInDisabledReason,
+            clockInTime: attendanceData.clockInTime || '',
+            clockOutTime: attendanceData.clockOutTime || '',
+            earlyClockInHours: attendanceData.earlyClockInHours || 3,
+            // ⭐ New flags for forgotten clock out
+            hasForgottenClockOut: attendanceData.hasForgottenClockOut || false,
+            forgottenShiftDate: attendanceData.forgottenShiftDate || '',
+            forgottenClockInTime: attendanceData.forgottenClockInTime || '',
+            isWithinEarlyWindow: attendanceData.isWithinEarlyWindow || false
+          });
         }
       }
     } catch (error) {
@@ -145,6 +171,9 @@ function Navbar({ user, onLogout }) {
     clockInTimeRef.current = null;
   };
 
+  // =============================================================================
+  // 🕐 CLOCK IN / OUT HANDLERS
+  // =============================================================================
   const handleClockIn = async () => {
     setClocking(true);
     try {
@@ -186,13 +215,13 @@ function Navbar({ user, onLogout }) {
         localStorage.setItem(`clockInTime_${user.id}`, timeStr);
         localStorage.setItem(`isNightShift_${user.id}`, isNightShift); 
         
-        const unlockTimestamp = Date.now() + 5000;
+        const unlockTimestamp = Date.now() + 10000;
         localStorage.setItem(`clockOutUnlockTime_${user.id}`, unlockTimestamp);
         
         setTimeout(() => {
           localStorage.removeItem(`clockOutUnlockTime_${user.id}`);
           setCooldownTrigger(prev => prev + 1);
-        }, 5000);
+        }, 10000);
         
         alert('✅ Clocked In successfully!');
         
@@ -246,6 +275,9 @@ function Navbar({ user, onLogout }) {
     }
   };
 
+  // =============================================================================
+  // 🎨 ROLE ICON & NAME HELPERS
+  // =============================================================================
   const getRoleIcon = () => {
     if (user?.accessLevel === 1) return '🔧';
     if (isRegularApprover || isFinalApprover) return '👑';
@@ -262,6 +294,9 @@ function Navbar({ user, onLogout }) {
   const handleMouseEnter = (dropdown) => setOpenDropdown(dropdown);
   const handleMouseLeave = () => setOpenDropdown(null);
 
+  // =============================================================================
+  // ⏰ TIME FORMATTING HELPER
+  // =============================================================================
   const formatTimeDisplay = (timeString) => {
     if (!timeString || timeString === '{}') return '';
     if (timeString.match(/(\d+):(\d+)\s*(AM|PM)/i)) return timeString;
@@ -273,6 +308,9 @@ function Navbar({ user, onLogout }) {
     }
   };
 
+  // =============================================================================
+  // 🖥️ CLOCK SECTION RENDERER
+  // =============================================================================
   const renderClockSection = () => {
     if (loadingStatus || !isInitialized) {
       return <div className="clock-status loading">⏳ Syncing Attendance...</div>;
@@ -281,15 +319,43 @@ function Navbar({ user, onLogout }) {
     const isClockedIn = todayStatus?.clockedIn === true || isClockedInRef.current === true;
     const isClockedOut = todayStatus?.clockedOut === true;
 
+    if (todayStatus?.shouldShowCompleted) {
+      return (
+        <div className="clock-status completed">
+          {todayStatus?.statusMessage || `✅ Completed: ${formatTimeDisplay(todayStatus?.clockInTime)} - ${formatTimeDisplay(todayStatus?.clockOutTime)}`}
+          {todayStatus?.clockInDisabledReason && (
+            <span className="clock-hint" style={{ display: 'block', fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>
+              {todayStatus.clockInDisabledReason}
+            </span>
+          )}
+        </div>
+      );
+    }
+
     if (todayStatus?.isOnLeave && !isClockedIn) {
       return <div className="clock-status on-leave">📅 On Leave Today</div>;
     }
 
-    if (!isClockedIn) {
+    if (!isClockedIn && todayStatus?.shouldShowClockIn) {
       return (
         <button onClick={handleClockIn} disabled={clocking} className="clock-nav-btn clock-in">
           {clocking ? '⏳ Clocking In...' : '🕐 CLOCK IN'}
         </button>
+      );
+    }
+
+    if (!isClockedIn && !todayStatus?.shouldShowClockIn && !todayStatus?.shouldShowCompleted) {
+      return (
+        <div className="clock-status">
+          <button disabled className="clock-nav-btn clock-in disabled" style={{ opacity: 0.6, cursor: 'not-allowed' }}>
+            🕐 CLOCK IN 🔒
+          </button>
+          {todayStatus?.clockInDisabledReason && (
+            <span className="clock-hint" style={{ display: 'block', fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>
+              {todayStatus.clockInDisabledReason}
+            </span>
+          )}
+        </div>
       );
     }
 
@@ -323,6 +389,35 @@ function Navbar({ user, onLogout }) {
       );
     }
 
+    // ⭐ Check for forgotten clock out
+    const hasForgottenClockOut = todayStatus?.hasForgottenClockOut || false;
+    const isWithinEarlyWindow = todayStatus?.isWithinEarlyWindow || false;
+
+    if (hasForgottenClockOut && isWithinEarlyWindow) {
+      return (
+        <div className="clock-status warning-message">
+          <div className="clock-actions">
+            <button 
+              onClick={handleClockIn} 
+              disabled={clocking}
+              className="clock-nav-btn clock-in"
+            >
+              🕐 CLOCK IN
+            </button>
+          </div>
+          <div className="warning-note">
+            <span className="warning-icon">⚠️⚠️⚠️</span>
+            <span className="warning-text">
+              <strong>You did not clock out yesterday!</strong>
+              <br />
+              Please file a <strong>CLOCK OUT Adjustment</strong> in 
+              Attendance Regularization immediately.
+            </span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <button onClick={handleClockIn} disabled={clocking} className="clock-nav-btn clock-in">
         {clocking ? '⏳ Clocking In...' : '🕐 CLOCK IN'}
@@ -330,6 +425,9 @@ function Navbar({ user, onLogout }) {
     );
   };
 
+  // =============================================================================
+  // 🖥️ MAIN RENDER
+  // =============================================================================
   return (
     <nav className="navbar">
       <div className="nav-top-row">
@@ -347,6 +445,7 @@ function Navbar({ user, onLogout }) {
       <div className="nav-clock-section">{renderClockSection()}</div>
 
       <div className="nav-links">
+        {/* 👤 My Dashboard */}
         {!isCEO && (
           <div className="dropdown" onMouseEnter={() => handleMouseEnter('mydashboard')} onMouseLeave={handleMouseLeave}>
             <button className="dropdown-btn">👤 My Dashboard <span className="dropdown-arrow">▼</span></button>
@@ -356,12 +455,13 @@ function Navbar({ user, onLogout }) {
                 <Link to="/my-attendance" onClick={() => setOpenDropdown(null)}>📅 Attendance Record</Link>
                 <Link to="/my-requests" onClick={() => setOpenDropdown(null)}>📋 Leave Requests</Link>
                 <Link to="/new-request" onClick={() => setOpenDropdown(null)}>✨ File New Leaves</Link>
-                {canRegularize && <Link to="/regularization" onClick={() => setOpenDropdown(null)}>🔄 Regularization</Link>}
+                {canRegularize && (<Link to="/attendance-reg-request" onClick={() => setOpenDropdown(null)}> ✨ File Attendce Reg </Link> )}
               </div>
             )}
           </div>
         )}
 
+        {/* 👥 Team Dashboard */}
         {isDeptApprover && (
           <div className="dropdown" onMouseEnter={() => handleMouseEnter('teamdashboard')} onMouseLeave={handleMouseLeave}>
             <button className="dropdown-btn">👥 Team Dashboard <span className="dropdown-arrow">▼</span></button>
@@ -370,26 +470,30 @@ function Navbar({ user, onLogout }) {
                 {isRegularApprover && <Link to="/approvals" onClick={() => setOpenDropdown(null)}>✅ Team Leave Mngt</Link>}
                 <Link to="/dept-requests" onClick={() => setOpenDropdown(null)}>📋 Team Leave Status</Link>
                 <Link to="/team-attendance" onClick={() => setOpenDropdown(null)}>📅 Team Attendance</Link>
+                {isAttenRegApprover && ( <Link to="/reg-approvals" onClick={() => setOpenDropdown(null)}> ✅ Attendce Reg Mngt</Link>)}
               </div>
             )}
           </div>
         )}
 
+        {/* 🔧 Admin Dashboard */}
         {isAdmin && (
           <div className="dropdown" onMouseEnter={() => handleMouseEnter('admin')} onMouseLeave={handleMouseLeave}>
             <button className="dropdown-btn">🔧 Admin <span className="dropdown-arrow">▼</span></button>
             {openDropdown === 'admin' && (
               <div className="dropdown-content">
                 {isFinalApprover && <Link to="/final-approvals" onClick={() => setOpenDropdown(null)}>✅ All Leaves Mngt</Link>}
+                <Link to="/reg-approvals" onClick={() => setOpenDropdown(null)}>✅ Attendce Reg Mngt</Link>
                 <Link to="/all-attendance" onClick={() => setOpenDropdown(null)}>📅 All Attendance</Link>
                 <Link to="/admin" onClick={() => setOpenDropdown(null)}>📋 All Leaves Status</Link>
                 <Link to="/daily-timekeep" onClick={() => setOpenDropdown(null)}>📊 Daily Timekeep</Link>
-                <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>🔧 HR Acknowledgement</Link>
+                <Link to="/hr-dashboard" onClick={() => setOpenDropdown(null)}>🔧 HR Acknowledgement</Link>               
               </div>
             )}
           </div>
         )}
 
+        {/* 👤 Profile */}
         <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>👤 Profile</Link>
       </div>
     </nav>

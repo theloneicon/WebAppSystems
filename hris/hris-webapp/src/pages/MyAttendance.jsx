@@ -16,7 +16,7 @@ function MyAttendance({ user }) {
 
   const loadAttendanceRecords = async () => {
     setLoading(true);
-    const result = await api.getMyAttendance(user.id, selectedMonth + 1, selectedYear);
+    const result = await api.getMyAttendance(user.id, selectedMonth + 1, selectedYear, user.isNightShift);
     if (result.success) {
       setAttendanceRecords(result.records);
     }
