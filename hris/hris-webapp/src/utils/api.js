@@ -220,7 +220,7 @@ clockIn: async (employeeID, employeeName, schedArrangement, locationGPS, schedul
   return response.json();
 },
 
-  clockOut: async (employeeID, employeeName, schedArrangement, locationGPS, scheduleEnd) => {
+clockOut: async (employeeID, employeeName, schedArrangement, locationGPS, scheduleEnd) => {
     const now = new Date();
     const logDate = formatDate(now);
     const logTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -262,42 +262,74 @@ clockIn: async (employeeID, employeeName, schedArrangement, locationGPS, schedul
     return response.json();
   },
 
-  // ==================== REGULARIZATION FUNCTIONS ====================
-  createRegularizationRequest: async (employeeID, employeeName, date, clockIn, clockOut, breakMinutes, totalHours, reason, obReference, approverID) => {
-    const formattedDate = formatDate(date);
-    const response = await fetch(
-      `${API_BASE}?endpoint=createRegularizationRequest&employeeID=${encodeURIComponent(employeeID)}&employeeName=${encodeURIComponent(employeeName)}&date=${encodeURIComponent(formattedDate)}&clockIn=${encodeURIComponent(clockIn)}&clockOut=${encodeURIComponent(clockOut)}&breakMinutes=${encodeURIComponent(breakMinutes)}&totalHours=${encodeURIComponent(totalHours)}&reason=${encodeURIComponent(reason)}&obReference=${encodeURIComponent(obReference)}&approverID=${encodeURIComponent(approverID)}`
-    );
-    return response.json();
-  },
+  // src/utils/api.js
 
-  getMyRegularizations: async (employeeID) => {
-    const response = await fetch(
-      `${API_BASE}?endpoint=getMyRegularizations&employeeID=${encodeURIComponent(employeeID)}`
-    );
-    return response.json();
-  },
+// ==================== REGULARIZATION FUNCTIONS ====================
 
-  getPendingRegularizations: async (approverID) => {
-    const response = await fetch(
-      `${API_BASE}?endpoint=getPendingRegularizations&approverID=${encodeURIComponent(approverID)}`
-    );
-    return response.json();
-  },
+createRegularizationRequest: async (employeeID, employeeName, date, clockIn, clockOut, reason, obReference, approverID) => {
+  const formattedDate = formatDate(date);
+  const response = await fetch(
+    `${API_BASE}?endpoint=createRegularizationRequest&employeeID=${encodeURIComponent(employeeID)}&employeeName=${encodeURIComponent(employeeName)}&date=${encodeURIComponent(formattedDate)}&clockIn=${encodeURIComponent(clockIn)}&clockOut=${encodeURIComponent(clockOut)}&reason=${encodeURIComponent(reason)}&obReference=${encodeURIComponent(obReference)}&approverID=${encodeURIComponent(approverID)}`
+  );
+  return response.json();
+},
 
-  approveRegularization: async (requestID, approverID, comments) => {
-    const response = await fetch(
-      `${API_BASE}?endpoint=approveRegularization&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
-    );
-    return response.json();
-  },
+updateRegularizationRequest: async (requestID, employeeID, date, clockIn, clockOut, reason, comments) => {
+  const formattedDate = formatDate(date);
+  const response = await fetch(
+    `${API_BASE}?endpoint=updateRegularizationRequest&requestID=${encodeURIComponent(requestID)}&employeeID=${encodeURIComponent(employeeID)}&date=${encodeURIComponent(formattedDate)}&clockIn=${encodeURIComponent(clockIn)}&clockOut=${encodeURIComponent(clockOut)}&reason=${encodeURIComponent(reason)}&comments=${encodeURIComponent(comments)}`
+  );
+  return response.json();
+},
 
-  rejectRegularization: async (requestID, approverID, comments) => {
-    const response = await fetch(
-      `${API_BASE}?endpoint=rejectRegularization&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
-    );
-    return response.json();
-  },
+cancelRegularizationRequest: async (requestID, employeeID) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=cancelRegularizationRequest&requestID=${encodeURIComponent(requestID)}&employeeID=${encodeURIComponent(employeeID)}`
+  );
+  return response.json();
+},
+
+getMyRegularizations: async (employeeID) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=getMyRegularizations&employeeID=${encodeURIComponent(employeeID)}`
+  );
+  return response.json();
+},
+
+getPendingRegularizations: async (approverID) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=getPendingRegularizations&approverID=${encodeURIComponent(approverID)}`
+  );
+  return response.json();
+},
+
+getMyRegularizationsForApprover: async (approverID) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=getMyRegularizationsForApprover&approverID=${encodeURIComponent(approverID)}`
+  );
+  return response.json();
+},
+
+forReviewRegularization: async (requestID, approverID, comments) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=forReviewRegularization&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+  );
+  return response.json();
+},
+
+approveRegularization: async (requestID, approverID, comments) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=approveRegularization&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+  );
+  return response.json();
+},
+
+rejectRegularization: async (requestID, approverID, comments) => {
+  const response = await fetch(
+    `${API_BASE}?endpoint=rejectRegularization&requestID=${encodeURIComponent(requestID)}&approverID=${encodeURIComponent(approverID)}&comments=${encodeURIComponent(comments)}`
+  );
+  return response.json();
+},
 
   // ==================== ADDITIONAL FUNCTIONS ====================
   getLastClockInTime: async (employeeID) => {
@@ -307,9 +339,9 @@ clockIn: async (employeeID, employeeName, schedArrangement, locationGPS, schedul
     return response.json();
   },
 
-  getMyAttendance: async (employeeID, month, year) => {
+  getMyAttendance: async (employeeID, month, year, nightShiftWorker) => {
     const response = await fetch(
-      `${API_BASE}?endpoint=getMyAttendance&employeeID=${encodeURIComponent(employeeID)}&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`
+      `${API_BASE}?endpoint=getMyAttendance&employeeID=${encodeURIComponent(employeeID)}&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}&nightShiftWorker=${encodeURIComponent(nightShiftWorker)}`
     );
     return response.json();
   },
